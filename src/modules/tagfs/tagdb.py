@@ -4,21 +4,24 @@ class TagDB:
 
 	#TODO Atomic commits
 	#TODO MEMORY OPTION
+	#TODO check for thread safety
 	def __init__(self, location, sql="", memory=False) :
 		self.connection = sqlite3.connect(location)
 		cursor = self.connection.cursor()
 		
-		#TODO CATCH EXCEPTION FOR EXISTING TABLES
 		#TODO BETTER INDIZES + KEYs
-		cursor.execute('CREATE TABLE files (id INTEGER PRIMARY KEY, path VARCHAR UNIQUE)')
-		cursor.execute('CREATE TABLE tags  (tid INTEGER,fid INTEGER, tag VARCHAR)')
-		cursor.execute('CREATE TABLE tagvalues  (tid INTEGER,value VARCHAR)')
+		
+		cursor.execute('CREATE TABLE IF NOT EXISTS files (id INTEGER PRIMARY KEY, path VARCHAR UNIQUE)')
+		cursor.execute('CREATE TABLE IF NOT EXISTS tags  (tid INTEGER,fid INTEGER, tag VARCHAR)')
+		cursor.execute('CREATE TABLE IF NOT EXISTS tagvalues  (tid INTEGER,value VARCHAR)')
+		
 		self.connection.commit()
 		
 		
 	def addFile(self, file):
 		cursor = self.connection.cursor()
 		cursor.execute('INSERT INTO files(path) VALUES(\'' + file +'\')')
+		
 		self.connection.commit()
 		
 	def removeFile(self, file):
