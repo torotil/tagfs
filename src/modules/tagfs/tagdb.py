@@ -2,6 +2,7 @@ import sqlite3
 
 class TagDB:
 
+	#TODO use prepared sql statements
 	#TODO Atomic commits
 	#TODO MEMORY OPTION
 	#TODO check for thread safety
@@ -83,5 +84,18 @@ class TagDB:
 		cursor.execute('DELETE FROM tags '\
 					   'WHERE fid = (SELECT id FROM FILES WHERE path = \''+file+'\')')
 		self.connection.commit()
+		
+	def getTagsForFile(self, file):
+		cursor = self.connection.cursor()
+		ret = []
+		cursor.execute('SELECT b.tag FROM '\
+					   'files a, tags b '\
+					   'WHERE a.path = \'' + file + '\''\
+					   'AND b.fid = a.id')
+		
+		for row in cursor:
+			ret.append(row[0])
+		
+		return ret
 		
 		
