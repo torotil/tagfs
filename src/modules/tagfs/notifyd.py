@@ -3,6 +3,7 @@
 import os
 import pyinotify
 from tagdb import *
+from time import time
 
 debug = True
 
@@ -18,7 +19,7 @@ class EventHandler(pyinotify.ProcessEvent):
 	# a new file was created
 	def process_IN_CREATE(self, event):
 		if debug: print "Creating:", event.pathname
-	
+		new_mtime = time()	
 		# TODO since editors name their temp files differently, the file
 		# extensions to ignore should be stored in a common place and not
 		# being hardcoded here. .swp & .swpx are extensions used by vim
@@ -37,23 +38,28 @@ class EventHandler(pyinotify.ProcessEvent):
 			curTags = db.getTagsForDirectory(event.path)
 			for tag in curTags:
 				db.addTagToFile(tag, event.pathname)
+			db.setModtime(new_mtime)
 
 	# a file was removed, so let's remove it from the db as well
 	def process_IN_DELETE(self, event):
 		if debug: print "Deleting:", event.pathname
-		
+		new_mtime = time()
+
 		# see above def
 		if event.pathname.endswith(".swp") or event.pathname.endswith(".swpx"):
 			# do  nothing
 			if debug: print "A temporary file has been deleted, ignoring..."
 		else:
 			db.removeFile(event.pathname)
+			setModtime(new_mtime)
 
 	# a file was written, let's see if it was a .tag file and update the db
 	# WISHLIST: if existing meta tags (e.g. id3 tags) are imported as well,
 	# they could be handled here, e.g. if the file extension/mime type is
 	# mp3, the id3 tags could be extracted and if changed written to the db
 	def process_IN_CLOSE_WRITE(self, event):
+		new_mtime = time()
+
 		if event.name == ".tag":
 			if debug: print "DEBUG: changes to a .tag file!"
 
@@ -63,8 +69,9 @@ class EventHandler(pyinotify.ProcessEvent):
 			for line in f:
 				if debug: print line,
 				db.addTagToDirectory(line, event.path)
+			
+			db.setModtime(new_mtime)
 			f.close()
-
 
 handler = EventHandler()
 notifier = pyinotify.Notifier(wm, handler)
