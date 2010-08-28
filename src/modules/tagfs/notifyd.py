@@ -24,8 +24,9 @@ class EventHandler(pyinotify.ProcessEvent):
 		# extensions to ignore should be stored in a common place and not
 		# being hardcoded here. .swp & .swpx are extensions used by vim
 		if os.path.isdir(event.pathname):
-			# do nothing
-			if debug: print "A directory has been created, ignoring..."
+			if debug: print "A directory has been created"
+			db.addFile(event.pathname)
+			db.setModtime(new_mtime)
 		elif event.pathname.endswith(".swp") or event.pathname.endswith(".swpx"):
 			# do nothing
 			if debug: print "A temporary file has been created, ignoring..."
@@ -51,7 +52,7 @@ class EventHandler(pyinotify.ProcessEvent):
 			if debug: print "A temporary file has been deleted, ignoring..."
 		else:
 			db.removeFile(event.pathname)
-			setModtime(new_mtime)
+			db.setModtime(new_mtime)
 
 	# a file was written, let's see if it was a .tag file and update the db
 	# WISHLIST: if existing meta tags (e.g. id3 tags) are imported as well,
