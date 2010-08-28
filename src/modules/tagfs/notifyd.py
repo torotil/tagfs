@@ -1,13 +1,12 @@
 #!/usr/bin/python
 
-import pyinotify
-import re
-import tagdb
 import os
+import pyinotify
 from tagdb import *
 
 debug = True
-#
+
+# connect to the database
 homedir = os.path.expanduser('~')
 db = TagDB(homedir + "/.tagfs/db.sqlite")
 
@@ -15,38 +14,45 @@ wm = pyinotify.WatchManager()
 mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE
 
 class EventHandler(pyinotify.ProcessEvent):
-	# a new file was created, let's update the db
+
+	# a new file was created
 	def process_IN_CREATE(self, event):
 		if debug: print "Creating:", event.pathname
 	
 		# TODO since editors name their temp files differently, the file
 		# extensions to ignore should be stored in a common place and not
 		# being hardcoded here. .swp & .swpx are extensions used by vim
-		if event.pathname.endswith(".swp") or event.pathname.endswith(".swpx"):
+		if os.path.isdir(event.pathname):
+			# do nothing
+			if debug: print "A directory has been created, ignoring..."
+		elif event.pathname.endswith(".swp") or event.pathname.endswith(".swpx"):
 			# do nothing
 			if debug: print "A temporary file has been created, ignoring..."
 		elif event.name == ".tag":
 			# do nothing
-			if debug: print ".tag file created"
+			if debug: print "A .tag file has been created, ignoring"
 		else:
+			# add the file to the db and tag it with the directory tags
 			db.addFile(event.pathname)
 			curTags = db.getTagsForDirectory(event.path)
 			for tag in curTags:
 				db.addTagToFile(tag, event.pathname)
 
-	# a file was removed, so let's remove it from the db aswell
+	# a file was removed, so let's remove it from the db as well
 	def process_IN_DELETE(self, event):
 		if debug: print "Deleting:", event.pathname
 		
+		# see above def
 		if event.pathname.endswith(".swp") or event.pathname.endswith(".swpx"):
-			if debug: print "A temporary file has been deleted, ignoring..."
 			# do  nothing
+			if debug: print "A temporary file has been deleted, ignoring..."
 		else:
 			db.removeFile(event.pathname)
-			# also remove tags for that file from .tag file?
 
 	# a file was written, let's see if it was a .tag file and update the db
-	# accordingly
+	# WISHLIST: if existing meta tags (e.g. id3 tags) are imported as well,
+	# they could be handled here, e.g. if the file extension/mime type is
+	# mp3, the id3 tags could be extracted and if changed written to the db
 	def process_IN_CLOSE_WRITE(self, event):
 		if event.name == ".tag":
 			if debug: print "DEBUG: changes to a .tag file!"

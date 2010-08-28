@@ -143,7 +143,7 @@ class TagDB:
 	def getTagsForDirectory(self, path):
 		cursor = self.connection.cursor()
 		ret = []
-		cursor.execute('SELECT b.tag FROM '\
+		cursor.execute('SELECT DISTINCT b.tag FROM '\
 					   'files a, tags b '\
 					   'WHERE a.path like \'' + path + '%\''\
 					   'AND b.fid = a.id')
