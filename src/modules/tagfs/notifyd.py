@@ -30,6 +30,9 @@ class EventHandler(pyinotify.ProcessEvent):
 			if debug: print ".tag file created"
 		else:
 			db.addFile(event.pathname)
+			curTags = db.getTagsForDirectory(event.path)
+			for tag in curTags:
+				db.addTagToFile(tag, event.pathname)
 
 	# a file was removed, so let's remove it from the db aswell
 	def process_IN_DELETE(self, event):
