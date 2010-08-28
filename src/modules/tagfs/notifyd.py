@@ -25,6 +25,9 @@ class EventHandler(pyinotify.ProcessEvent):
 		if event.pathname.endswith(".swp") or event.pathname.endswith(".swpx"):
 			# do nothing
 			if debug: print "A temporary file has been created, ignoring..."
+		elif event.name == ".tag":
+			# do nothing
+			if debug: print ".tag file created"
 		else:
 			db.addFile(event.pathname)
 
