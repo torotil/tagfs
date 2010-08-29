@@ -143,12 +143,12 @@ class TagDB:
 	def resetTagsForDirectoryTo(self,path,taglist):
 		self.removeAllTagsFromDirectory(path)
 		for tag in taglist:
-			self.addTagToDirectory(tag, path)
+			self.addTagToDirectory(tag, path)  
 			
 	def resetTagsForFileTo(self,file,taglist):
 		self.removeAllTagsFromFile(file)
 		for tag in taglist:
-			self.addTagToFile(tag, file)
+			self.addTagToFile(tag, file) 
 		
 	def getTagsForItem(self, path):
 		cursor = self.connection.cursor()
