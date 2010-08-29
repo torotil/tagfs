@@ -164,4 +164,14 @@ class TagDB:
 			ret.append(row[0])
 		
 		return ret		
-		
+	
+	def getTagsForTagCloud(self):
+		cursor = self.connection.cursor()
+		ret = []
+		cursor.execute('SELECT tag FROM tags')
+
+		for row in cursor:
+			ret.append(row[0])
+
+		return ret 
+
