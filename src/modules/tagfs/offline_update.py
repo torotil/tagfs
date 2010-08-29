@@ -34,7 +34,7 @@ class OfflineUpdater:
 					return [set([os.path.split(x)[1] for x in y]) for y in p]
 					
 				
-				old_d, old_f = filenames(db.getDiretoryItems(current_dir))
+				old_d, old_f = filenames(db.getDirectoryItems(current_dir))
 				print 'olds', (old_d, old_f)
 				cur_d, cur_f = set(dirs), set(files)
 				print 'curs', (cur_d, cur_f)
