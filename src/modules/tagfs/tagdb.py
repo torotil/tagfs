@@ -25,6 +25,7 @@ class TagDB:
 		cursor.execute('CREATE TABLE IF NOT EXISTS tags        (tid INTEGER,fid INTEGER, type VARCHAR(1), tag VARCHAR)')
 		cursor.execute('CREATE TABLE IF NOT EXISTS tagvalues   (tid INTEGER,value VARCHAR)')
 		
+		#cursor.execute('INSERT or IGNORE INTO items (id, type, path) VALUES (1, \'D\', \'/\')')
 		self.connection.commit()
 		
 	def getModtime(self):
@@ -150,8 +151,18 @@ class TagDB:
 		for tag in taglist:
 			self.addTagToFile(tag, file)
 	
-	def resetDirectoryFiles(self, file_list):
-		pass 
+	def getDiretoryItems(self, path):
+		cursor = self.connection.cursor()
+		cursor.execute('SELECT id FROM items where path = \'' + path +'\' AND type = \'D\'')
+		r = cursor.fetchone()
+		if r == None:
+			return ([], [])
+		id = r[0]
+		cursor.execute('SELECT path FROM items WHERE id in (SELECT cid FROM hierarchy where pid = ' + str(id) +') AND type = \'D\'')
+		dirs = [row[0] for row in cursor]
+		cursor.execute('SELECT path FROM items WHERE id in (SELECT cid FROM hierarchy where pid = ' + str(id) +') AND type = \'F\'')
+		files = [row[0] for row in cursor]
+		return (dirs, files)
 		
 	def getTagsForItem(self, path):
 		cursor = self.connection.cursor()
