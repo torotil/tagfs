@@ -28,7 +28,8 @@ class EventHandler(pyinotify.ProcessEvent):
 			if debug: print "A directory has been created"
 			db.addDirectory(event.pathname)
 			db.setModtime(new_mtime)
-		# so do temporary files (of which there could be much more)
+			return
+		# ...so do temporary files (of which there could be much more)
 		elif event.pathname.endswith(".swp") or event.pathname.endswith(".swpx"):
 			# do nothing
 			if debug: print "A temporary file has been created, ignoring..."
@@ -37,7 +38,8 @@ class EventHandler(pyinotify.ProcessEvent):
 		if event.name == ".tag":
 			# do nothing
 			if debug: print "A .tag file has been created, ignoring"
-		# now we have a file that we really wanna tag
+			return
+		# we have a file that we really wanna tag
 		else:
 			print "adding file " + event.pathname + " to db"
 			db.addFile(event.pathname)
@@ -54,11 +56,18 @@ class EventHandler(pyinotify.ProcessEvent):
 		if debug: print "Deleting:", event.pathname
 		new_mtime = time()
 
-		# see above def
-		if event.pathname.endswith(".swp") or event.pathname.endswith(".swpx"):
+		# directories need special care...
+		if os.path.isdir(event.pathname):
+			if debug: print "A directory has been created"
+			db.removeDirectory(event.pathname)
+			db.setModtime(new_mtime)
+			return
+		elif event.pathname.endswith(".swp") or event.pathname.endswith(".swpx"):
 			# do  nothing
 			if debug: print "A temporary file has been deleted, ignoring..."
+			return
 		else:
+			if debug: print "removing " + event.pathname + "from db"
 			db.removeFile(event.pathname)
 			db.setModtime(new_mtime)
 
@@ -69,23 +78,25 @@ class EventHandler(pyinotify.ProcessEvent):
 	def process_IN_CLOSE_WRITE(self, event):
 		new_mtime = time()
 
-		if event.name == ".tag":
-			if debug: print "DEBUG: changes to a .tag file!"
+		if event.pathname.endswith("/.tag"):
+			if debug: print "changes have been made to a .tag file"
 
 			newTags = []
 
+			# get the tags from the .tag file and add them to the list
 			f = open(event.pathname, 'r')
 			for line in f:
 				newTags.append(line)
 			db.setModtime(new_mtime)
 			f.close()
+			if debug: print "tag list from .tag file:"
 			if debug: print newTags
 
-			db.resetTagsForDirectoryTo(event.pathname, newTags)
+			# update database with the taglist
+			db.resetTagsForDirectoryTo(event.path, newTags)
 
+# TODO start when mounting fs
 handler = EventHandler()
 notifier = pyinotify.Notifier(wm, handler)
-
 wdd = wm.add_watch(tagfsroot, mask, rec=True)
-
 notifier.loop()
