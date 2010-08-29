@@ -113,7 +113,6 @@ class TagDB:
 		cursor.execute('DELETE FROM hierarchy')
 		self.connection.commit()
 		
-		
 	def removeDirectory(self, path):
 		
 		if path == '/':
