@@ -20,7 +20,7 @@ class TagDB:
 			cursor.execute('INSERT INTO global_metadata(modtime) VALUES(0)')
 		
 			
-		cursor.execute('CREATE TABLE IF NOT EXISTS hierarchy   (pid INTEGER, cid INTEGER)')
+		cursor.execute('CREATE TABLE IF NOT EXISTS hierarchy   (yn_direct_child VARCHAR(1), pid INTEGER, cid INTEGER)')
 		cursor.execute('CREATE TABLE IF NOT EXISTS items       (type VARCHAR(1), id INTEGER PRIMARY KEY, path VARCHAR UNIQUE)')
 		cursor.execute('CREATE TABLE IF NOT EXISTS tags        (tid INTEGER,fid INTEGER, type VARCHAR(1), tag VARCHAR)')
 		cursor.execute('CREATE TABLE IF NOT EXISTS tagvalues   (tid INTEGER,value VARCHAR)')
@@ -50,15 +50,22 @@ class TagDB:
 				
 		cursor.execute('INSERT INTO items(path,type) VALUES(\'' + file +'\', \'F\')')
 		
+		yn_direct_child = ''
+		
 		if len(subdirs) > 2 :
-			cursor.execute(' INSERT INTO hierarchy(pid, cid) '\
-						' SELECT a.id, b.id FROM items a, items b '\
+			cursor.execute(' INSERT INTO hierarchy(pid, cid, yn_direct_child) '\
+						' SELECT a.id, b.id, CASE WHEN a.path = \'' + path + '\' THEN \'Y\' ELSE \'N\' END FROM items a, items b '\
 					   	' WHERE b.path = \'' + file + '\' '\
 					   	' AND   b.path like a.path || \'%\' '\
 					   	' AND   a.type = \'D\' '\
 					  		)
+			yn_direct_child = 'N'
+		else:
+			yn_direct_child = 'Y'
 			
-		cursor.execute(' INSERT INTO hierarchy(pid, cid) SELECT 0, id FROM items WHERE path = \'' + file + '\' ')
+			
+		cursor.execute(' INSERT INTO hierarchy(pid, cid, yn_direct_child) '\
+					   ' SELECT 0, id,\''+yn_direct_child+'\'  FROM items WHERE path = \'' + file + '\' ')
 		self.connection.commit()
 		
 	def removeFile(self, file):
@@ -81,16 +88,21 @@ class TagDB:
 		
 		cursor.execute('INSERT OR IGNORE INTO items(path,type) VALUES(\'' + path +'\', \'D\')')
 		
+		yn_direct_child = ''
+		
 		if len(subdirs) > 2 :
-			cursor.execute(' INSERT INTO hierarchy(pid, cid) '\
-						' SELECT a.id, b.id FROM items a, items b '\
+			cursor.execute(' INSERT INTO hierarchy(pid, cid, yn_direct_child) '\
+						' SELECT a.id, b.id, CASE WHEN a.path = \'' + subdirpath + '\' THEN \'Y\' ELSE \'N\' END FROM items a, items b '\
 						' WHERE b.path = \'' + path + '\' '\
 						' AND   b.path like a.path || \'%\' '\
 						' AND   b.path != a.path '\
 						' AND   a.type = \'D\' '\
 						)
+			yn_direct_child = 'N'
+		else:
+			yn_direct_child = 'Y'
 		
-		cursor.execute(' INSERT INTO hierarchy(pid, cid) SELECT 0, id FROM items WHERE path = \'' + path + '\' ')
+		cursor.execute(' INSERT INTO hierarchy(pid, cid, yn_direct_child) SELECT 0, id,\''+yn_direct_child+'\' FROM items WHERE path = \'' + path + '\' ')
 		self.connection.commit()  
 		
 		
@@ -165,16 +177,16 @@ class TagDB:
 		for tag in taglist:
 			self.addTagToFile(tag, file)
 	
-	def getDiretoryItems(self, path):
+	def getDirectoryItems(self, path):
 		cursor = self.connection.cursor()
 		cursor.execute('SELECT id FROM items where path = \'' + path +'\' AND type = \'D\'')
 		r = cursor.fetchone()
 		if r == None:
 			return ([], [])
 		id = r[0]
-		cursor.execute('SELECT path FROM items WHERE id in (SELECT cid FROM hierarchy where pid = ' + str(id) +') AND type = \'D\'')
+		cursor.execute('SELECT path FROM items WHERE id in (SELECT cid FROM hierarchy where pid = ' + str(id) +' AND type = \'D\' AND yn_direct_child = \'Y\')')
 		dirs = [row[0] for row in cursor]
-		cursor.execute('SELECT path FROM items WHERE id in (SELECT cid FROM hierarchy where pid = ' + str(id) +') AND type = \'F\'')
+		cursor.execute('SELECT path FROM items WHERE id in (SELECT cid FROM hierarchy where pid = ' + str(id) +' AND type = \'F\' AND yn_direct_child = \'Y\')')
 		files = [row[0] for row in cursor]
 		return (dirs, files)
 		
