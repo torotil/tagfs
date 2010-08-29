@@ -19,9 +19,6 @@ class TagCloud:
 	def destroy(self,widget,data=None):
 		gtk.main_quit()
 
-	def button_clicked(self,widget,data):
-		data.go_back()
-
 	def __init__(self):
 		self.moz = gtkmozembed.MozEmbed()
 		#create a Vertical Box Container to whole the browser
@@ -37,7 +34,6 @@ class TagCloud:
 		box.pack_start(self.moz,True,True,0)
 
 		tags = db.getTagsForTagCloud()
-
 		words = {}
 		for x in (' '.join(tags)).split():
 			words[x] = 1 + words.get(x, 0)
