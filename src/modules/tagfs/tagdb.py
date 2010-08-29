@@ -49,12 +49,16 @@ class TagDB:
 				cursor.execute('INSERT or IGNORE INTO items(path,type) VALUES(\'' + path +'\', \'D\')')
 				
 		cursor.execute('INSERT INTO items(path,type) VALUES(\'' + file +'\', \'F\')')
-		cursor.execute(' INSERT INTO hierarchy(pid, cid) '\
-					   ' SELECT a.id, b.id FROM items a, items b '\
-					   ' WHERE b.path = \'' + file + '\' '\
-					   ' AND   b.path like a.path || \'%\' '\
-					   ' AND   a.type = \'D\' '\
-					  )
+		
+		if len(subdirs) > 2 :
+			cursor.execute(' INSERT INTO hierarchy(pid, cid) '\
+						' SELECT a.id, b.id FROM items a, items b '\
+					   	' WHERE b.path = \'' + file + '\' '\
+					   	' AND   b.path like a.path || \'%\' '\
+					   	' AND   a.type = \'D\' '\
+					  		)
+			
+		cursor.execute(' INSERT INTO hierarchy(pid, cid) SELECT 0, id FROM items WHERE path = \'' + file + '\' ')
 		self.connection.commit()
 		
 	def removeFile(self, file):
@@ -76,14 +80,17 @@ class TagDB:
 				cursor.execute('INSERT OR IGNORE INTO items(path,type) VALUES(\'' + subdirpath +'\', \'D\')')
 		
 		cursor.execute('INSERT OR IGNORE INTO items(path,type) VALUES(\'' + path +'\', \'D\')')
-		cursor.execute(' INSERT INTO hierarchy(pid, cid) '\
-					   ' SELECT a.id, b.id FROM items a, items b '\
-					   ' WHERE b.path = \'' + path + '\' '\
-					   ' AND   b.path like a.path || \'%\' '\
-					   ' AND   b.path != a.path '\
-					   ' AND   a.type = \'D\' '\
-					  )
 		
+		if len(subdirs) > 2 :
+			cursor.execute(' INSERT INTO hierarchy(pid, cid) '\
+						' SELECT a.id, b.id FROM items a, items b '\
+						' WHERE b.path = \'' + path + '\' '\
+						' AND   b.path like a.path || \'%\' '\
+						' AND   b.path != a.path '\
+						' AND   a.type = \'D\' '\
+						)
+		
+		cursor.execute(' INSERT INTO hierarchy(pid, cid) SELECT 0, id FROM items WHERE path = \'' + path + '\' ')
 		self.connection.commit()  
 		
 		
@@ -102,10 +109,16 @@ class TagDB:
 		
 	def addTagToDirectory(self, tag, path):
 		cursor = self.connection.cursor()
-		cursor.execute('INSERT INTO tags(fid, tag) '\
-					   'SELECT id, \'' + tag + '\' '\
-					   'FROM items '\
-					   'WHERE path = \'' + path + '\'')
+		
+		if path == '/':
+			cursor.execute(' INSERT INTO tags (fid, tag) VALUES (0, \'' + tag + '\')')
+		
+		else:
+			cursor.execute('INSERT INTO tags(fid, tag) '\
+						'SELECT id, \'' + tag + '\' '\
+						'FROM items '\
+						'WHERE path = \'' + path + '\'')
+			
 		self.connection.commit()
 		
 	def addTagToFile(self, tag, file):
