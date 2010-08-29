@@ -79,6 +79,8 @@ import exceptions
 import time
 import functools
 import view
+import threading
+import offline_update
 
 if not hasattr(fuse, '__version__'):
     raise RuntimeError, \
@@ -167,6 +169,7 @@ class TagFS(fuse.Fuse):
         c = Config()
         c.enableValueFilters = opts.enableValueFilters
         c.enableRootItemLinks = opts.enableRootItemLinks
+        c.itemsDir = opts.itemsDir
 
         return c
 
@@ -197,6 +200,12 @@ class TagFS(fuse.Fuse):
 
     def symlink(self, path, linkPath):
         return self.view.symlink(path, linkPath)
+    
+    def main(self):
+      ou = offline_update.OfflineUpdater(self.config)
+      ou_thread = threading.Thread(target=ou.scan)
+      ou_thread.start()
+      return fuse.Fuse.main(self)
 
 def main():
     fs = TagFS(os.getcwd(),
