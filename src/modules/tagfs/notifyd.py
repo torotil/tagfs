@@ -7,48 +7,45 @@ from time import time
 
 debug = True
 
-tagfsroot = "/tmp/tagfs"
-
-# connect to the database
-homedir = os.path.expanduser('~')
-db = TagDB(homedir + "/.tagfs/db.sqlite")
-
-wm = pyinotify.WatchManager()
-mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE
-
 class EventHandler(pyinotify.ProcessEvent):
+
+	def mkpath(self, path):
+		prefix_len = len(tagfsroot)
+		newpath = path[prefix_len:]
+		print "old " + path
+		if newpath == "": newpath = "/"
+		print "new " + newpath
+		return newpath
+
+#	def __init__(self):
+		#elf.config = config
 
 	# a new file was created
 	def process_IN_CREATE(self, event):
-		if debug: print "Creatied:", event.pathname
+		if debug: print "Created:", event.pathname
 		new_mtime = time()
 		
 		# directories need special care...
 		if os.path.isdir(event.pathname):
 			if debug: print "A directory has been created"
-			db.addDirectory(event.pathname)
+			db.addDirectory(self.mkpath(event.pathname))
 			db.setModtime(new_mtime)
 			return
-		# ...so do temporary files (of which there could be much more)
-		elif event.pathname.endswith(".swp") or event.pathname.endswith(".swpx"):
+		# ...so do hidden files
+		elif event.name.startswith("."):
 			# do nothing
-			if debug: print "A temporary file has been created, ignoring..."
-			return
-		# we don't want to tag the .tag files
-		if event.name == ".tag":
-			# do nothing
-			if debug: print "A .tag file has been created, ignoring"
+			if debug: print "A hidden file has been created, ignoring..."
 			return
 		# we have a file that we really wanna tag
 		else:
-			print "adding file " + event.pathname + " to db"
-			db.addFile(event.pathname)
-			curTags = db.getTagsForItem(event.path)
-			if debug: print "current tags for " + event.path
-			if debug: print curTags
-			for tag in curTags:
-				if debug: print "adding tag " + tag + " to file " + event.pathname
-				db.addTagToFile(tag, event.pathname)
+			print "Adding file " + event.pathname + " to db"
+			db.addFile(self.mkpath(event.pathname))
+			#curTags = db.getTagsForItem(event.path)
+			#if debug: print "current tags for " + event.path
+			#if debug: print curTags
+			#for tag in curTags:
+				#if debug: print "adding tag " + tag + " to file " + event.pathname
+				#db.addTagToFile(tag, event.pathname)
 			db.setModtime(new_mtime)
 
 	# a file was removed, so let's remove it from the db as well
@@ -59,16 +56,17 @@ class EventHandler(pyinotify.ProcessEvent):
 		# directories need special care...
 		if os.path.isdir(event.pathname):
 			if debug: print "A directory has been created"
-			db.removeDirectory(event.pathname)
+			db.removeDirectory(self.mkpath(event.pathname))
 			db.setModtime(new_mtime)
 			return
-		elif event.pathname.endswith(".swp") or event.pathname.endswith(".swpx"):
-			# do  nothing
-			if debug: print "A temporary file has been deleted, ignoring..."
+		
+		elif event.name.startswith("."):
+			# do nothing
+			if debug: print "A hidden file has been created, ignoring..."
 			return
 		else:
 			if debug: print "removing " + event.pathname + "from db"
-			db.removeFile(event.pathname)
+			db.removeFile(self.mkpath(event.pathname))
 			db.setModtime(new_mtime)
 
 	# a file was written, let's see if it was a .tag file and update the db
@@ -87,16 +85,25 @@ class EventHandler(pyinotify.ProcessEvent):
 			f = open(event.pathname, 'r')
 			for line in f:
 				newTags.append(line)
-			db.setModtime(new_mtime)
 			f.close()
-			if debug: print "tag list from .tag file:"
-			if debug: print newTags
 
 			# update database with the taglist
-			db.resetTagsForDirectoryTo(event.path, newTags)
+			db.resetTagsForDirectoryTo(self.mkpath(event.path), newTags)
+			db.setModtime(new_mtime)
 
-# TODO start when mounting fs
-handler = EventHandler()
-notifier = pyinotify.Notifier(wm, handler)
-wdd = wm.add_watch(tagfsroot, mask, rec=True)
-notifier.loop()
+if __name__== "__main__":
+	tagfsroot = os.path.abspath("/tmp/tagfs")
+
+	#connect to the database
+	homedir = os.path.expanduser('~')
+	db = TagDB(homedir + "/.tagfs/db.sqlite")
+
+	db.addDirectory("/")
+
+	wm = pyinotify.WatchManager()
+	mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE
+	# TODO start when mounting fs
+	handler = EventHandler()
+	notifier = pyinotify.Notifier(wm, handler)
+	wdd = wm.add_watch(tagfsroot, mask, rec=True)
+	notifier.loop()
