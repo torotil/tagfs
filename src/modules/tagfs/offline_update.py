@@ -8,7 +8,7 @@ from tagdb import TagDB
 class OfflineUpdater:
 	def __init__(self, config):
 		self.config = config
-		self.db = TagDB(config.db_location)
+		self.db = TagDB(config.dbLocation)
 	
 	def scan(self, dir = None, mtime = None):
 		if mtime == None:
@@ -16,6 +16,7 @@ class OfflineUpdater:
 		if dir == None:
 			dir = self.config.itemsDir
 		new_mtime = time.time()
+		
 		
 		for root, dirs, files in os.walk(self.dir):
 			#print root, os.path.getmtime(root)

@@ -140,6 +140,10 @@ class TagFS(fuse.Fuse):
                                dest = 'enableRootItemLinks',
                                help = 'Display item links in tagfs root directory.',
                                default = Config.ENABLE_ROOT_ITEM_LINKS)
+        self.parser.add_option('--db-file',
+                               dest = 'dbLocation',
+                               help = 'location for the sqlite database',
+                               default = '.tag-db.sqlite')
 
     def getItemAccess(self):
         # Maybe we should move the parser run from main here.
@@ -170,6 +174,7 @@ class TagFS(fuse.Fuse):
         c.enableValueFilters = opts.enableValueFilters
         c.enableRootItemLinks = opts.enableRootItemLinks
         c.itemsDir = opts.itemsDir
+        c.dbLocation = os.path.join(c.itemsDir, opts.dbLocation)
 
         return c
 
