@@ -103,10 +103,23 @@ class TagDB:
 			yn_direct_child = 'Y'
 		
 		cursor.execute(' INSERT INTO hierarchy(pid, cid, yn_direct_child) SELECT 0, id,\''+yn_direct_child+'\' FROM items WHERE path = \'' + path + '\' ')
-		self.connection.commit()  
+		self.connection.commit()
+		
+	def truncateAll(self):
+		cursor = self.connection.cursor()
+		cursor.execute('DELETE FROM tagvalues')  
+		cursor.execute('DELETE FROM tags') 
+		cursor.execute('DELETE FROM items') 
+		cursor.execute('DELETE FROM hierarchy')
+		self.connection.commit()
 		
 		
 	def removeDirectory(self, path):
+		
+		if path == '/':
+			self.truncateAll()
+			return
+		
 		cursor = self.connection.cursor()
 		cursor.execute('SELECT id FROM items where path = \'' + path +'\' AND type = \'D\'')
 		r = cursor.fetchone()
@@ -143,9 +156,13 @@ class TagDB:
 		
 	def removeTagFromDirectory(self,tag,path):
 		cursor = self.connection.cursor()
-		cursor.execute(' DELETE FROM tags '\
-					   ' WHERE fid = (SELECT id FROM items WHERE path = \''+path+'\') '\
-					   ' AND tag = \''+tag+'\'')
+		
+		if path == '/':
+			cursor.execute(' DELETE FROM tags where fid = 0 AND tag = \''+tag+'\'') 
+		else:
+			cursor.execute(' DELETE FROM tags '\
+						' WHERE fid = (SELECT id FROM items WHERE path = \''+path+'\') '\
+					   	' AND tag = \''+tag+'\'')
 		self.connection.commit()
 		
 	def removeTagFromFile(self,tag,file):
@@ -157,8 +174,13 @@ class TagDB:
 		
 	def removeAllTagsFromDirectory(self,path):
 		cursor = self.connection.cursor()
-		cursor.execute('DELETE FROM tags '\
-					   'WHERE fid = (SELECT id FROM items WHERE path = \''+path+'\')')
+		
+		if path == '/':
+			cursor.execute(' DELETE FROM tags where fid = 0') 
+		else:
+			cursor.execute('DELETE FROM tags '\
+					   	'WHERE fid = (SELECT id FROM items WHERE path = \''+path+'\')')
+			
 		self.connection.commit()
 		
 	def removeAllTagsFromFile(self,file):
@@ -179,11 +201,15 @@ class TagDB:
 	
 	def getDirectoryItems(self, path):
 		cursor = self.connection.cursor()
-		cursor.execute('SELECT id FROM items where path = \'' + path +'\' AND type = \'D\'')
-		r = cursor.fetchone()
-		if r == None:
-			return ([], [])
-		id = r[0]
+		
+		id = 0
+		if path != '/':
+			cursor.execute('SELECT id FROM items where path = \'' + path +'\' AND type = \'D\'')
+			r = cursor.fetchone()
+			if r == None:
+				return ([], [])
+			id = r[0]
+			
 		cursor.execute('SELECT path FROM items WHERE id in (SELECT cid FROM hierarchy where pid = ' + str(id) +' AND type = \'D\' AND yn_direct_child = \'Y\')')
 		dirs = [row[0] for row in cursor]
 		cursor.execute('SELECT path FROM items WHERE id in (SELECT cid FROM hierarchy where pid = ' + str(id) +' AND type = \'F\' AND yn_direct_child = \'Y\')')
