@@ -10,6 +10,14 @@ class OfflineUpdater:
 	def __init__(self, config):
 		self.config = config
 	
+	@staticmethod
+	def filterHidden(list):
+		return [item for item in list if item[:1] != '.']
+	
+	@staticmethod
+	def filenames(items):
+		return [set(OfflineUpdater.filterHidden([os.path.split(x)[1] for x in y])) for y in items]
+	
 	def scan(self, dir = None, mtime = None):
 		db = TagDB(self.config.dbLocation)
 		if mtime == None:
@@ -26,17 +34,9 @@ class OfflineUpdater:
 			if current_dir == '': current_dir = '/'
 			
 			if os.path.getmtime(root) > mtime:
-				# rescan directory
-				#print 'adding directory'
-				#db.addDirectory(root)
-				def filenames(p):
-					# convert list of path-lists to sets of filenames
-					return [set([os.path.split(x)[1] for x in y]) for y in p]
-					
-				
-				old_d, old_f = filenames(db.getDirectoryItems(current_dir))
+				old_d, old_f = self.filenames(db.getDirectoryItems(current_dir))
 				print 'olds', (old_d, old_f)
-				cur_d, cur_f = set(dirs), set(files)
+				cur_d, cur_f = set(self.filterHidden(dirs)), set(self.filterHidden(files))
 				print 'curs', (cur_d, cur_f)
 				
 				for f in (cur_f - old_f):
