@@ -80,6 +80,7 @@ class TagDB:
 					   ' SELECT a.id, b.id FROM items a, items b '\
 					   ' WHERE b.path = \'' + path + '\' '\
 					   ' AND   b.path like a.path || \'%\' '\
+					   ' AND   b.path != a.path '\
 					   ' AND   a.type = \'D\' '\
 					  )
 		
