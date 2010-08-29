@@ -20,7 +20,7 @@ class EventHandler(pyinotify.ProcessEvent):
 
 	# a new file was created
 	def process_IN_CREATE(self, event):
-		if debug: print "Creating:", event.pathname
+		if debug: print "Creatied:", event.pathname
 		new_mtime = time()
 		
 		# directories need special care...
@@ -32,12 +32,14 @@ class EventHandler(pyinotify.ProcessEvent):
 		elif event.pathname.endswith(".swp") or event.pathname.endswith(".swpx"):
 			# do nothing
 			if debug: print "A temporary file has been created, ignoring..."
+			return
 		# we don't want to tag the .tag files
 		if event.name == ".tag":
 			# do nothing
 			if debug: print "A .tag file has been created, ignoring"
 		# now we have a file that we really wanna tag
 		else:
+			print "adding file " + event.pathname + " to db"
 			db.addFile(event.pathname)
 			curTags = db.getTagsForItem(event.path)
 			if debug: print "current tags for " + event.path
@@ -74,14 +76,12 @@ class EventHandler(pyinotify.ProcessEvent):
 
 			f = open(event.pathname, 'r')
 			for line in f:
-				if debug: print line,
 				newTags.append(line)
-				db.addTagToDirectory(line, event.path)
 			db.setModtime(new_mtime)
 			f.close()
+			if debug: print newTags
 
-			# broken? using db.addToDirectory(line, event.path) instead
-			# db.resetTagsForDirectoryTo(event.pathname, newTags)
+			db.resetTagsForDirectoryTo(event.pathname, newTags)
 
 handler = EventHandler()
 notifier = pyinotify.Notifier(wm, handler)
