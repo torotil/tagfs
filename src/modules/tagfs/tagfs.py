@@ -87,6 +87,7 @@ if not hasattr(fuse, '__version__'):
         "your fuse-py doesn't know of fuse.__version__, probably it's too old."
 
 fuse.fuse_python_api = (0, 2)
+fuse.feature_assert('stateful_files', 'has_init')
 
 from cache import cache
 import item_access
@@ -208,8 +209,10 @@ class TagFS(fuse.Fuse):
     
     def fsinit(self):
       ou = offline_update.OfflineUpdater(self.config)
-      ou_thread = threading.Thread(target=ou.scan)
-      ou_thread.start()
+      ou.scan()
+      #self.multithreaded = 1
+      #ou_thread = threading.Thread(target=ou.scan)
+      #ou_thread.start()
 
 def main():
     fs = TagFS(os.getcwd(),
@@ -224,7 +227,8 @@ def main():
         # items dir should probably be an arg, not an option.
         print "Error: Missing items directory option."
         sys.exit()
-        
+    
+    fs.fsinit()
     return fs.main()
 
 if __name__ == '__main__':
