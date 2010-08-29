@@ -8,17 +8,17 @@ from tagdb import TagDB
 class OfflineUpdater:
 	def __init__(self, config):
 		self.config = config
-		self.db = TagDB(config.dbLocation)
 	
 	def scan(self, dir = None, mtime = None):
+		db = TagDB(self.config.dbLocation)
 		if mtime == None:
-			mtime = self.db.getModtime()
+			mtime = db.getModtime()
 		if dir == None:
 			dir = self.config.itemsDir
 		new_mtime = time.time()
 		
 		
-		for root, dirs, files in os.walk(self.dir):
+		for root, dirs, files in os.walk(dir):
 			#print root, os.path.getmtime(root)
 			if os.path.getmtime(root) > mtime:
 				# rescan directory
@@ -29,7 +29,7 @@ class OfflineUpdater:
 				# rescan .tag file
 				print 'rescan .tag file', root+'.tag'
 
-		self.db.setModtime(new_mtime)
+		db.setModtime(new_mtime)
 
 if __name__ == "__main__":
 	c = object()

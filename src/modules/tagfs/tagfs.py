@@ -206,11 +206,10 @@ class TagFS(fuse.Fuse):
     def symlink(self, path, linkPath):
         return self.view.symlink(path, linkPath)
     
-    def main(self):
+    def fsinit(self):
       ou = offline_update.OfflineUpdater(self.config)
       ou_thread = threading.Thread(target=ou.scan)
       ou_thread.start()
-      return fuse.Fuse.main(self)
 
 def main():
     fs = TagFS(os.getcwd(),
