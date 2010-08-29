@@ -79,6 +79,8 @@ import exceptions
 import time
 import functools
 import view
+import threading
+import offline_update
 
 if not hasattr(fuse, '__version__'):
     raise RuntimeError, \
@@ -138,6 +140,10 @@ class TagFS(fuse.Fuse):
                                dest = 'enableRootItemLinks',
                                help = 'Display item links in tagfs root directory.',
                                default = Config.ENABLE_ROOT_ITEM_LINKS)
+        self.parser.add_option('--db-file',
+                               dest = 'dbLocation',
+                               help = 'location for the sqlite database',
+                               default = '.tag-db.sqlite')
 
     def getItemAccess(self):
         # Maybe we should move the parser run from main here.
@@ -167,6 +173,8 @@ class TagFS(fuse.Fuse):
         c = Config()
         c.enableValueFilters = opts.enableValueFilters
         c.enableRootItemLinks = opts.enableRootItemLinks
+        c.itemsDir = opts.itemsDir
+        c.dbLocation = os.path.join(c.itemsDir, opts.dbLocation)
 
         return c
 
@@ -197,6 +205,11 @@ class TagFS(fuse.Fuse):
 
     def symlink(self, path, linkPath):
         return self.view.symlink(path, linkPath)
+    
+    def fsinit(self):
+      ou = offline_update.OfflineUpdater(self.config)
+      ou_thread = threading.Thread(target=ou.scan)
+      ou_thread.start()
 
 def main():
     fs = TagFS(os.getcwd(),
