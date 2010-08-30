@@ -1,4 +1,5 @@
 import sqlite3
+from path_parser import *
 
 class TagDB:
 
@@ -9,6 +10,7 @@ class TagDB:
 	def __init__(self, location, sql="", memory=False) :
 		self.connection = sqlite3.connect(location)
 		cursor = self.connection.cursor()
+		self.parser=PathParser()
 		
 		#TODO BETTER INDIZES + KEYs
 		
@@ -240,4 +242,22 @@ class TagDB:
 			ret.append(row[0])
 
 		return ret 
+	
+	def listFilesForPath(self, path):
+		sqlpart = self.parser.get_source_file(path)
+		ret = []
+		cursor = self.connection.cursor()
+		stmt  = ' SELECT a.path FROM '
+		stmt += ' items a, hierarchy b, ( '
+		stmt += sqlpart
+		stmt += ' ) c'
+		stmt += ' WHERE b.pid = c.fid '
+		stmt += ' AND   (a.id = b.pid OR a.id = b.cid) AND a.type = \'F\''
+		cursor.execute(stmt)
+		for row in cursor:
+			tmp=row[0]
+			ret.append(tmp.split('/')[len(tmp.split('/'))-1:])
+		
+		return list(set(ret))
+
 
