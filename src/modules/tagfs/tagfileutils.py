@@ -41,7 +41,7 @@ class TagFileUtils:
 		return
 
 	# parses a tagfile and updates the db
-	def parseTagfile(self, tagfile):
+	def updateDBFromTagFile(self, tagfile):
 		tags = []
 		directoryTags = []
 		fileTags = []
@@ -56,10 +56,12 @@ class TagFileUtils:
 		
 		if size == 0: return
 
+		#build list of directory tags
 		while not tags[pos].startswith("[\"") and pos < size-1:
 			if tags[pos] != "\n": directoryTags.append(tags[pos])
 			pos+=1
 
+		# update directory tags in the database
 		if debug: print "directory tags: ", directoryTags
 		db.resetTagsForDirectoryTo(self.mkpath(tagfile[:-5]), directoryTags)
 		
@@ -69,12 +71,14 @@ class TagFileUtils:
 			filename = tags[pos][2:-3]
 			pos+=1
 			if tags[pos] != "\n": fileTags.append(tags[pos])
-			
+		
+			# build list of filetags
 			while not tags[pos].startswith("[\"") and pos < size-1:
 				pos+=1
 				if tags[pos] != "\n" and not tags[pos].startswith("[\""):
 					fileTags.append(tags[pos])
 
+			# update file tags in the database
 			db.removeAllTagsFromFile(self.mkpath(tagfile[:-4] + filename))
 			for tag in fileTags:
 				db.addTagToFile(tag, self.mkpath(tagfile[:-4] + filename))

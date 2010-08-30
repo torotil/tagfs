@@ -79,7 +79,7 @@ class EventHandler(pyinotify.ProcessEvent):
 
 		if event.pathname.endswith("/.tag"):
 			if debug: print "changes have been made to a .tag file"
-			tfu.parseTagfile(event.pathname)
+			tfu.updateDBFromTagFile(event.pathname)
 			#newTags = []
 
 			## get the tags from the .tag file and add them to the list
