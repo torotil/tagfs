@@ -250,7 +250,7 @@ class TagDB:
 		stmt  = ' SELECT a.path FROM '
 		stmt += ' items a, hierarchy b, ( '
 		stmt += sqlpart
-		stmt += ' ) c'
+		stmt += ' ) c '
 		stmt += ' WHERE b.pid = c.fid '
 		stmt += ' AND   (a.id = b.pid OR a.id = b.cid) AND a.type = \'F\''
 		cursor.execute(stmt)
@@ -259,5 +259,23 @@ class TagDB:
 			ret.append(tmp.split('/')[len(tmp.split('/'))-1:])
 		
 		return list(set(ret))
+	
+	def isFile(self, path):
+		filename = path.split('/')[len(path.split('/'))-1:][0]
+		tmpPath = path.rstrip(filename).rstrip('/')
+		sqlpart = self.parser.get_source_file(tmpPath)
+		cursor = self.connection.cursor()
+		stmt =  ' SELECT  COUNT(*) FROM ( '
+		stmt += ' SELECT a.path FROM '
+		stmt += ' items a, hierarchy b, ( '
+		stmt += sqlpart
+		stmt += ' ) c '
+		stmt += ' WHERE b.pid = c.fid '
+		stmt += ' AND   (a.id = b.pid OR a.id = b.cid) AND a.type = \'F\' '
+		stmt += ' AND   a.path like \'%' + filename +'\' '
+		stmt += ' ) '
+		cursor.execute(stmt)
+		
+		return cursor.fetchone()[0] == 1
 
 
