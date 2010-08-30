@@ -34,7 +34,6 @@ class PathParser:
 	
 	def get_source_file(self, path):
 		parts, path, filename = self.parse(path)
-		# TODO: exrtact path from optional "(in /path/in/itemsDir)"
 		q = ' SELECT fid, count(*) FROM tags WHERE tag IN(%s) GROUP BY fid HAVING count(*)=%d '
 		query = ' UNION '.join([q % ("'"+"', '".join(x)+"'", len(x)) for x in parts])
 		return query

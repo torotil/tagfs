@@ -5,6 +5,8 @@ import os.path
 import time
 
 from tagdb import TagDB
+from tagfileutils import TagFileUtils
+
 
 class OfflineUpdater:
 	def __init__(self, config):
@@ -56,9 +58,8 @@ class OfflineUpdater:
 			if os.path.exists(tagfile) and os.path.getmtime(tagfile) > mtime:
 				# rescan .tag file
 				print 'rescan .tag file', tagfile
-				with open(tagfile, 'r') as f:
-					tags = [line for line in f] 
-				db.resetTagsForDirectoryTo(root, tags)
+				tf = TagFileUtils()
+				tf.updateDBFromTagFile(self, tagfile)
 
 		db.setModtime(new_mtime)
 		print 'offline update finished.'
