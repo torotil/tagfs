@@ -3,6 +3,7 @@
 import os
 import pyinotify
 from tagdb import *
+from tagfileutils import *
 from time import time
 
 debug = True
@@ -12,9 +13,9 @@ class EventHandler(pyinotify.ProcessEvent):
 	def mkpath(self, path):
 		prefix_len = len(tagfsroot)
 		newpath = path[prefix_len:]
-		print "old " + path
+		if debug: print "old " + path
 		if newpath == "": newpath = "/"
-		print "new " + newpath
+		if debug: print "new " + newpath
 		return newpath
 
 #	def __init__(self):
@@ -78,21 +79,22 @@ class EventHandler(pyinotify.ProcessEvent):
 
 		if event.pathname.endswith("/.tag"):
 			if debug: print "changes have been made to a .tag file"
+			tfu.updateDBFromTagFile(event.pathname)
+			#newTags = []
 
-			newTags = []
+			## get the tags from the .tag file and add them to the list
+			#f = open(event.pathname, 'r')
+			#for line in f:
+				#newTags.append(line)
+			#f.close()
 
-			# get the tags from the .tag file and add them to the list
-			f = open(event.pathname, 'r')
-			for line in f:
-				newTags.append(line)
-			f.close()
-
-			# update database with the taglist
-			db.resetTagsForDirectoryTo(self.mkpath(event.path), newTags)
+			## update database with the taglist
+			#db.resetTagsForDirectoryTo(self.mkpath(event.path), newTags)
 			db.setModtime(new_mtime)
 
 if __name__== "__main__":
 	tagfsroot = os.path.abspath("/tmp/tagfs")
+	tfu = TagFileUtils()
 
 	#connect to the database
 	homedir = os.path.expanduser('~')
