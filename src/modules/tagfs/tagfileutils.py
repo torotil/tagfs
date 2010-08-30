@@ -20,25 +20,32 @@ class TagFileUtils:
 		if debug: print "truncated path: " + newpath
 		return newpath
 
-	# appends a number of tags to the tagfiles directory section
-	def appendDirectoryTags(self, tagfile, taglist):
-		return
+	# get directory and file tags from db and write to .tag file
+	def updateTagFileFromDB(self, path):
+		writepath = path
+		path = self.mkpath(path)
+		dirlist, filelist = db.getDirectoryItems(path)
 
-	# appends a number of tags to a file
-	def appendFileTags(self, tagfile, filetotag, taglist):
-		return
+		directoryTags = db.getTagsForItem(path)
+		
+		if path != "/":
+			parent = os.path.normpath(os.path.join(path, '..'))
+			directoryTags = [tag for tag in directoryTags if tag not in db.getTagsForItem(parent)]
+		
+		if debug: print "directory tags: ", directoryTags
 
-	# removes a file and it's tag from the tagfile
-	def removeFileFromTagfile(self, tagfile):
-		return
+		newtagfile = ''.join(directoryTags)
 
-	# removes one or more tags from a file entry
-	def removeFileTagsFromTagfile(self, tagfile, file, taglist):
-		return
+		for f in filelist:
+			fileTags = [tag for tag in db.getTagsForItem(f) if tag not in db.getTagsForItem(path)]
+			if debug: print "tags for file " + f + ": ", fileTags
+			if not fileTags == []:
+				newtagfile += "\n[\"" + os.path.basename(f) + "\"]\n" + ''.join(fileTags)
 	
-	# removes one or more tags from the directory section of a tagfile
-	def removeDirectoryTags(self, tagfile, taglist):
-		return
+		if debug: print "new .tag file:\n" + newtagfile + "\nwriting it to " + writepath + "/.tag"
+		f = open(writepath + "/.tag", "w")
+		f.write(newtagfile)
+		f.close()
 
 	# parses a tagfile and updates the db
 	def updateDBFromTagFile(self, tagfile):
@@ -53,8 +60,9 @@ class TagFileUtils:
 		f.close()
 
 		size = len(tags)
-		
-		if size == 0: return
+		if size == 0:
+			db.resetTagsForDirectoryTo(self.mkpath(tagfile[:-5]), [])
+			return
 
 		#build list of directory tags
 		while not tags[pos].startswith("[\"") and pos < size-1:
