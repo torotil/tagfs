@@ -18,7 +18,7 @@ class EventHandler(pyinotify.ProcessEvent):
 		return newpath
 
 #	def __init__(self):
-		#elf.config = config
+		#self.config = config
 
 	# a new file was created
 	def process_IN_CREATE(self, event):
