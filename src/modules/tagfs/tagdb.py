@@ -1,4 +1,5 @@
 import sqlite3
+from path_parser import *
 
 class TagDB:
 
@@ -9,6 +10,7 @@ class TagDB:
 	def __init__(self, location, sql="", memory=False) :
 		self.connection = sqlite3.connect(location)
 		cursor = self.connection.cursor()
+		self.parser=PathParser()
 		
 		#TODO BETTER INDIZES + KEYs
 		
@@ -240,4 +242,79 @@ class TagDB:
 			ret.append(row[0])
 
 		return ret 
+	
+	def listFilesForPath(self, path):
+		sqlpart = self.parser.get_source_file(path)
+		ret = []
+		cursor = self.connection.cursor()
+		stmt  = ' SELECT a.path FROM '
+		stmt += ' items a, hierarchy b, ( '
+		stmt += sqlpart
+		stmt += ' ) c '
+		stmt += ' WHERE b.pid = c.fid '
+		stmt += ' AND   (a.id = b.pid OR a.id = b.cid) AND a.type = \'F\''
+		cursor.execute(stmt)
+		for row in cursor:
+			tmp=row[0]
+			ret.append(tmp.split('/')[len(tmp.split('/'))-1:])
+		
+		return list(set(ret))
+	
+	def isFile(self, path):
+		filename = path.split('/')[len(path.split('/'))-1:][0]
+		tmpPath = path.rstrip(filename).rstrip('/')
+		sqlpart = self.parser.get_source_file(tmpPath)
+		cursor = self.connection.cursor()
+		stmt =  ' SELECT  COUNT(*) FROM ( '
+		stmt += ' SELECT a.path FROM '
+		stmt += ' items a, hierarchy b, ( '
+		stmt += sqlpart
+		stmt += ' ) c '
+		stmt += ' WHERE b.pid = c.fid '
+		stmt += ' AND   (a.id = b.pid OR a.id = b.cid) AND a.type = \'F\' '
+		stmt += ' AND   a.path like \'%' + filename +'\' '
+		stmt += ' ) '
+		cursor.execute(stmt)
+		
+		return cursor.fetchone()[0] == 1
+	
+	def getAvailableTagsForPath(self,path):
+		
+		if path == '/' or path.endswith('OR'):
+			return self.getTagsForTagCloud()
+		
+		#last part is and so we remove it
+		tmppath = path[0:len(path)-4]
+		
+		#now we strip away all ORs and use only the last part
+		tmppath = tmppath.split('/OR')[len(tmppath.split('/OR'))-1:][0]
+		
+		cursor = self.connection.cursor()
+		ret = []
+		
+		stmt =  ' SELECT distinct tag FROM ('
+		stmt += ' SELECT tag FROM tags a, ( '
+		stmt += self.parser.get_source_file(tmppath)
+		stmt += ' ) b \n'
+		stmt += ' WHERE a.fid = b.fid '
+		stmt += ' AND a.tag not in (' + tmppath.replace('AND', ',').replace('/', '\'') + '\' ) '
+		stmt += ' UNION '
+		stmt += ' SELECT tag FROM tags a, ( '
+		stmt += self.parser.get_source_file(tmppath)
+		stmt += ' ) b, hierarchy c '
+		stmt += ' WHERE c.pid = b.fid '
+		stmt += ' AND   (a.fid = c.cid OR a.fid = c.pid)'
+		stmt += ' AND a.tag not in (' + tmppath.replace('AND', ',').replace('/', '\'') + '\' ) '
+		stmt += ' ) '
+		
+		cursor.execute(stmt)
+		
+		for row in cursor:
+			ret.append(row[0])
+
+		return ret 
+		
+		
+		
+
 
