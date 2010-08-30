@@ -277,5 +277,44 @@ class TagDB:
 		cursor.execute(stmt)
 		
 		return cursor.fetchone()[0] == 1
+	
+	def getAvailableTagsForPath(self,path):
+		
+		if path == '/' or path.endswith('OR'):
+			return self.getTagsForTagCloud()
+		
+		#last part is and so we remove it
+		tmppath = path[0:len(path)-4]
+		
+		#now we strip away all ORs and use only the last part
+		tmppath = tmppath.split('/OR')[len(tmppath.split('/OR'))-1:][0]
+		
+		cursor = self.connection.cursor()
+		ret = []
+		
+		stmt =  ' SELECT distinct tag FROM ('
+		stmt += ' SELECT tag FROM tags a, ( '
+		stmt += self.parser.get_source_file(tmppath)
+		stmt += ' ) b \n'
+		stmt += ' WHERE a.fid = b.fid '
+		stmt += ' AND a.tag not in (' + tmppath.replace('AND', ',').replace('/', '\'') + '\' ) '
+		stmt += ' UNION '
+		stmt += ' SELECT tag FROM tags a, ( '
+		stmt += self.parser.get_source_file(tmppath)
+		stmt += ' ) b, hierarchy c '
+		stmt += ' WHERE c.pid = b.fid '
+		stmt += ' AND   (a.fid = c.cid OR a.fid = c.pid)'
+		stmt += ' AND a.tag not in (' + tmppath.replace('AND', ',').replace('/', '\'') + '\' ) '
+		stmt += ' ) '
+		
+		cursor.execute(stmt)
+		
+		for row in cursor:
+			ret.append(row[0])
+
+		return ret 
+		
+		
+		
 
 
