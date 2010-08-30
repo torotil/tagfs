@@ -1,16 +1,15 @@
 #!/usr/bin/python
 
 import os
-from tagdb import *
-
-debug = True
-tagfsroot = os.path.abspath("/tmp/tagfs")
-
-#connect to the database
-homedir = os.path.expanduser('~')
-db = TagDB(homedir + "/.tagfs/db.sqlite")
+from tagdb import TagDB
 
 class TagFileUtils:
+
+	def __init__(self, config):
+		debug = True
+		self.config = config
+		db = TagDB(self.config.dbLocation)
+		tagfsroot = self.config.itemsDir
 
 	def mkpath(self, path):
 		prefix_len = len(tagfsroot)

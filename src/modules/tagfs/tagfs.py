@@ -81,6 +81,8 @@ import functools
 import view
 import threading
 import offline_update
+import notifyd
+import pyinotify
 
 if not hasattr(fuse, '__version__'):
     raise RuntimeError, \
@@ -213,6 +215,12 @@ class TagFS(fuse.Fuse):
       #self.multithreaded = 1
       #ou_thread = threading.Thread(target=ou.scan)
       #ou_thread.start()
+
+      wm = pyinotify.WatchManager()
+      mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE
+      notifier = pyinotify.ThreadedNotifier(wm, notifyd.EventHandler(self.config))
+      notifier.start()
+      wdd = wm.add_watch(self.config.itemsDir, mask, rec=True)
 
 def main():
     fs = TagFS(os.getcwd(),
