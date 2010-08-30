@@ -58,8 +58,8 @@ class OfflineUpdater:
 			if os.path.exists(tagfile) and os.path.getmtime(tagfile) > mtime:
 				# rescan .tag file
 				print 'rescan .tag file', tagfile
-				tf = TagFileUtils()
-				tf.updateDBFromTagFile(self, tagfile)
+				tf = TagFileUtils(self.config)
+				tf.updateDBFromTagFile(tagfile)
 
 		db.setModtime(new_mtime)
 		print 'offline update finished.'
