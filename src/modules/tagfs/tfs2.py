@@ -18,6 +18,7 @@ from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 
 from tagdb import TagDB
 from stat import S_IFDIR, S_IFLNK, S_IFREG
+import offline_update
 
 
 class Stat:
@@ -94,8 +95,8 @@ class Loopback(LoggingMixIn, Operations):
 				return os.link(source, target)
 		
 		listxattr = None
-		mkdir = os.mkdir
-		mknod = os.mknod
+		mkdir = None
+		mknod = None
 		open = os.open
 				
 		def read(self, path, size, offset, fh):
@@ -162,7 +163,11 @@ class Loopback(LoggingMixIn, Operations):
 			return 'duplicates'
 		
 		def readlink(self, path):
-			return os.path.abspath(os.path.join(self.config.itemsDir, self.getDB().getSourceFile(path)[1:]))
+			if self.path_type(path.rsplit('/', 1)[0]) == 'duplicates':
+				path = self.getDB().getDuplicateSourceFile(path)
+			else:
+				path = self.getDB().getSourceFile(path) 
+			return os.path.abspath(os.path.join(self.config.itemsDir, path[1:]))
 		
 
 class Config:
@@ -208,6 +213,9 @@ if __name__ == "__main__":
 		c = Config()
 		c.itemsDir = os.path.abspath(argv[1])
 		c.dbLocation = os.path.join(c.itemsDir, '.tag-db.sqlite' )
+		
+		ou = offline_update.OfflineUpdater(c)
+		ou.scan()
 		
 		wm = pyinotify.WatchManager()
 		mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE

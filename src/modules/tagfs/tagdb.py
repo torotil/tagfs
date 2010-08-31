@@ -311,7 +311,7 @@ class TagDB:
 		
 		sqlpart = self.parser.get_source_file(tmpPath)
 		cursor = self.connection.cursor()
-		stmt = ' SELECT a.path FROM '
+		stmt = ' SELECT a.id, a.path FROM '
 		stmt += ' items a, ( '
 		stmt += sqlpart
 		stmt += ' ) b '
@@ -321,7 +321,7 @@ class TagDB:
 		cursor.execute(stmt)
 		
 		for row in cursor:
-			ret.append(row[0].replace('/','.')[1:])
+			ret.append(str(row[0])+'.'+row[1].replace('/','.')[1:])
 
 		return ret 
 	
@@ -352,6 +352,14 @@ class TagDB:
 		ret = cursor.fetchone()
 
 		return ret[0] 
+	
+	def getDuplicateSourceFile(self, path):
+		filename = path.rsplit('/',1)[-1]
+		id = int(filename.split('.',1)[0])
+		q = 'SELECT path FROM items WHERE id=%d and type=\'F\''
+		cursor = self.connection.cursor()
+		cursor.execute(q % id)
+		return cursor.fetchone()[0]
 	
 	def getAvailableTagsForPath(self,path):
 		
