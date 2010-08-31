@@ -98,7 +98,13 @@ class FilesPath(Path):
 	def readdir(self):
 		return self.sd + ['AND', 'OR'] + self.db().listFilesForPath(self.tags)
 	def getattr(self, file):
-		if file not in ['OR', 'AND'] and self.db().isFile('/'.join([self.path, file])):
+		
+		chk = self.db().isFile('/'.join([self.path, file]))
+		
+		if chk == None:
+			raise FuseOSError(ENOENT)
+		
+		if file not in ['OR', 'AND'] and chk:
 			return self.getStat(st_mode = S_IFLNK | 0400)
 		else:
 			return self.getStat(st_mode = S_IFDIR | 0500, st_nlink = 2)

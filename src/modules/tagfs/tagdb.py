@@ -293,6 +293,9 @@ class TagDB:
 		stmt += ' ) '
 		cursor.execute(stmt, ('%'+filename,))
 		
+		if cursor.fetchone()[0] == 0:
+			return None
+		
 		return cursor.fetchone()[0] == 1
 	
 	def getDuplicatePaths(self, tags, filename):
