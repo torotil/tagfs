@@ -9,7 +9,10 @@ class TagFileUtils:
 
 	def __init__(self, config):
 		self.config = config
-		self.db = TagDB(self.config.dbLocation)
+
+	def getDB(self):
+		db = TagDB(self.config.dbLocation)
+		return db
 
 	def mkpath(self, path):
 		prefix_len = len(self.config.itemsDir)
@@ -21,6 +24,7 @@ class TagFileUtils:
 
 	# get directory and file tags from db and write to .tag file
 	def updateTagFileFromDB(self, path):
+		self.db = self.getDB()
 		writepath = path
 		path = self.mkpath(path)
 		dirlist, filelist = self.db.getDirectoryItems(path)
@@ -48,6 +52,7 @@ class TagFileUtils:
 
 	# parses a tagfile and updates the db
 	def updateDBFromTagFile(self, tagfile):
+		self.db = self.getDB()
 		directoryTags = []
 		fileTags = {}
 		insertList = directoryTags
@@ -74,7 +79,7 @@ class TagFileUtils:
 		logging.debug("directory tags: " + str(directoryTags))
 		self.db.resetTagsForDirectoryTo(self.mkpath(tagfile[:-5]), directoryTags)
 		for file, taglist in fileTags.iteritems():
-			logging.debug("filetags for file %s : %s" % (file, taglist))
-			self.db.resetTagsForFileTo(file, taglist)
+			logging.debug("filetags for file %s : %s" % (self.mkpath(tagfile[:-4])+file, taglist))
+			self.db.resetTagsForFileTo(self.mkpath(tagfile[:-4])+file, taglist)
 			
 

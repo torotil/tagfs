@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import logging
 import os
 import pyinotify
 from tagdb import TagDB
@@ -8,24 +9,13 @@ from time import time
 
 class EventHandler(pyinotify.ProcessEvent):
 
-	def __init__(self, config):
+	def __init__(self, config, wm):
+		logging.debug("hello world from pyinotify")
+		self.mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE
 		self.config = config
+		self.wm = wm
 		self.tagfsroot = self.config.itemsDir
 		self.tfu = TagFileUtils(self.config)
-		#connect to the database
-
-		#wm = pyinotify.WatchManager()
-		#mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE
-		## TODO start when mounting fs
-		##handler = EventHandler()
-		##notifier = pyinotify.Notifier(wm, handler)
-		##wdd = wm.add_watch(tagfsroot, mask, rec=True)
-		##notifier.loop()
-
-		#notifier = pyinotify.ThreadedNotifier(wm, EventHandler())
-		#notifier.start()
-		#wdd = wm.add_watch('/tmp', mask, rec=True)
-
 
 	def getDB(self):
 		db = TagDB(self.config.dbLocation)
@@ -39,38 +29,43 @@ class EventHandler(pyinotify.ProcessEvent):
 
 	# a new file was created
 	def process_IN_CREATE(self, event):
-		db = self.getDB()
 		new_mtime = time()
-		
-		# directories need special care...
-		if os.path.isdir(event.pathname):
+	
+		if event.name.startswith("."):
+			if not event.name.endswith("."):
+				# do nothing
+				return
+		elif os.path.isdir(event.pathname):
+			logging.debug("creating directory: " + event.pathname)
+			db = self.getDB()
 			db.addDirectory(self.mkpath(event.pathname))
+			self.wm.add_watch(event.pathname, self.mask, rec=True)
 			db.setModtime(new_mtime)
-			return
-		# ...so do hidden files
-		elif event.name.startswith("."):
-			# do nothing
 			return
 		# we have a file that we really wanna tag
 		else:
-			print "Adding file " + event.pathname + " to db"
+			logging.debug("creating file: " + event.pathname)
+			db = self.getDB()
 			db.addFile(self.mkpath(event.pathname))
 			db.setModtime(new_mtime)
 
 	# a file was removed, so let's remove it from the db as well
 	def process_IN_DELETE(self, event):
-		db = self.getDB()
 		new_mtime = time()
 
-		# directories need special care...
-		if os.path.isdir(event.pathname):
+		if event.name.startswith("."):
+			if not event.name.endswith("."):
+				# do nothing
+				return
+		elif os.path.isdir(event.pathname):
+			logging.debug("removing directory: " + event.pathname)
+			db = self.getDB()
 			db.removeDirectory(self.mkpath(event.pathname))
 			db.setModtime(new_mtime)
 			return
-		elif event.name.startswith("."):
-			# do nothing
-			return
 		else:
+			logging.debug("removing file: " + event.pathname)
+			db = self.getDB()
 			db.removeFile(self.mkpath(event.pathname))
 			db.setModtime(new_mtime)
 
@@ -79,9 +74,10 @@ class EventHandler(pyinotify.ProcessEvent):
 	# they could be handled here, e.g. if the file extension/mime type is
 	# mp3, the id3 tags could be extracted and if changed written to the db
 	def process_IN_CLOSE_WRITE(self, event):
-		db = self.getDB()
 		new_mtime = time()
 
 		if event.pathname.endswith("/.tag"):
+			logging.debug(".tagfile " + event.pathname + "was modified")
+			db = self.getDB()
 			self.tfu.updateDBFromTagFile(event.pathname)
 			db.setModtime(new_mtime)

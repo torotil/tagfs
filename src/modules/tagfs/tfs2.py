@@ -219,7 +219,7 @@ if __name__ == "__main__":
 		
 		wm = pyinotify.WatchManager()
 		mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE
-		notifier = pyinotify.ThreadedNotifier(wm, notifyd.EventHandler(c))
+		notifier = pyinotify.ThreadedNotifier(wm, notifyd.EventHandler(c, wm))
 		notifier.start()
 		wdd = wm.add_watch(c.itemsDir, mask, rec=True)
 		
