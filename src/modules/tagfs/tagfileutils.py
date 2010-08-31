@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import with_statement
 
 import os
 from tagdb import TagDB
@@ -48,46 +49,32 @@ class TagFileUtils:
 
 	# parses a tagfile and updates the db
 	def updateDBFromTagFile(self, tagfile):
-		tags = []
 		directoryTags = []
-		fileTags = []
-		pos = 0
-
-		f = open(tagfile, 'r')
-		for line in f:
-			tags.append(line)
-		f.close()
-
-		size = len(tags)
-		if size == 0:
-			self.db.resetTagsForDirectoryTo(self.mkpath(tagfile[:-5]), [])
-			return
-
-		#build list of directory tags
-		while not tags[pos].startswith("[\"") and pos < size-1:
-			if tags[pos] != "\n": directoryTags.append(tags[pos])
-			pos+=1
-
-		# update directory tags in the database
+		fileTags = {}
+		insertList = directoryTags
+		
+		with open(tagfile, 'r') as file:
+			for line in file:
+				# strip whitespace
+				tag = line.strip()
+				# skip empty lines
+				if not len(tag) > 0:
+					continue
+				if tag.startswith('["'):
+					# looks like a file section
+					if tag.endswith('"]'):
+						# create taglist for file and switch insertList to it
+						insertList = fileTags[tag[2:-2]] = []
+					else:
+						# syntax error!
+						pass
+				# add tag to current tag-list
+				insertList.append(tag)
+		
 		logging.debug("directory tags: " + str(directoryTags))
 		self.db.resetTagsForDirectoryTo(self.mkpath(tagfile[:-5]), directoryTags)
-		
-		# extract filename
-		while pos < size-1:
-			fileTags = []
-			filename = tags[pos][2:-3]
-			pos+=1
-			if tags[pos] != "\n": fileTags.append(tags[pos])
-		
-			# build list of filetags
-			while not tags[pos].startswith("[\"") and pos < size-1:
-				pos+=1
-				if tags[pos] != "\n" and not tags[pos].startswith("[\""):
-					fileTags.append(tags[pos])
-
-			# update file tags in the database
-			self.db.removeAllTagsFromFile(self.mkpath(tagfile[:-4] + filename))
-			for tag in fileTags:
-				self.db.addTagToFile(tag, self.mkpath(tagfile[:-4] + filename))
-			logging.debug("filetags for file " + filename + " : " + fileTags)
+		for file, taglist in fileTags.iteritems():
+			logging.debug("filetags for file %s : %s" % (file, taglist))
+			self.db.resetTagsForFileTo(file, taglist)
+			
 
