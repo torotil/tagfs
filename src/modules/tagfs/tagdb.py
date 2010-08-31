@@ -38,7 +38,7 @@ class TagDB:
 	
 	def setModtime(self,timestamp):
 		cursor = self.connection.cursor()
-		cursor.execute('UPDATE global_metadata set modtime = ' + str(timestamp))
+		cursor.execute('UPDATE global_metadata set modtime = '+ str(timestamp))
 		self.connection.commit()
 		
 	def addFile(self, file):
@@ -49,33 +49,33 @@ class TagDB:
 			path = ''
 			for j in range (1,i+1):
 				path = path + '/' + subdirs[j]
-				cursor.execute('INSERT or IGNORE INTO items(path,type) VALUES(\'' + path +'\', \'D\')')
+				cursor.execute('INSERT or IGNORE INTO items(path,type) VALUES(?, \'D\')',(path,))
 				
-		cursor.execute('INSERT INTO items(path,type) VALUES(\'' + file +'\', \'F\')')
+		cursor.execute('INSERT INTO items(path,type) VALUES(?, \'F\')',(file,))
 		
 		yn_direct_child = ''
 		
 		if len(subdirs) > 2 :
 			cursor.execute(' INSERT INTO hierarchy(pid, cid, yn_direct_child) '\
-						' SELECT a.id, b.id, CASE WHEN a.path = \'' + path + '\' THEN \'Y\' ELSE \'N\' END FROM items a, items b '\
-					   	' WHERE b.path = \'' + file + '\' '\
+						' SELECT a.id, b.id, CASE WHEN a.path = ? THEN \'Y\' ELSE \'N\' END FROM items a, items b '\
+					   	' WHERE b.path = ? '\
 					   	' AND   b.path like a.path || \'%\' '\
 					   	' AND   a.type = \'D\' '\
-					  		)
+					  	,(path, file))
 			yn_direct_child = 'N'
 		else:
 			yn_direct_child = 'Y'
 			
 			
 		cursor.execute(' INSERT INTO hierarchy(pid, cid, yn_direct_child) '\
-					   ' SELECT 0, id,\''+yn_direct_child+'\'  FROM items WHERE path = \'' + file + '\' ')
+					   ' SELECT 0, id,?  FROM items WHERE path = ? ', (yn_direct_child, file))
 		self.connection.commit()
 		
 	def removeFile(self, file):
 		cursor = self.connection.cursor()
-		cursor.execute('DELETE FROM tags WHERE fid = (SELECT id FROM items where path = \''+ file + '\' AND type = \'F\')')
-		cursor.execute('DELETE FROM hierarchy WHERE cid = (SELECT id FROM items where path = \''+ file + '\' AND type = \'F\')')
-		cursor.execute('DELETE FROM items where path = \''+ file + '\' AND type = \'F\'')
+		cursor.execute('DELETE FROM tags WHERE fid = (SELECT id FROM items where path = ? AND type = \'F\')', (file,))
+		cursor.execute('DELETE FROM hierarchy WHERE cid = (SELECT id FROM items where path = ? AND type = \'F\')', (file,))
+		cursor.execute('DELETE FROM items where path = ? AND type = \'F\'', (file,))
 		self.connection.commit() 
 		
 	def addDirectory(self, path):
@@ -87,25 +87,25 @@ class TagDB:
 			subdirpath = ''
 			for j in range (1,i+1):
 				subdirpath = subdirpath + '/' + subdirs[j]
-				cursor.execute('INSERT OR IGNORE INTO items(path,type) VALUES(\'' + subdirpath +'\', \'D\')')
+				cursor.execute('INSERT OR IGNORE INTO items(path,type) VALUES(?, \'D\')', (subdirpath,))
 		
-		cursor.execute('INSERT OR IGNORE INTO items(path,type) VALUES(\'' + path +'\', \'D\')')
+		cursor.execute('INSERT OR IGNORE INTO items(path,type) VALUES(?, \'D\')', (path,))
 		
 		yn_direct_child = ''
 		
 		if len(subdirs) > 2 :
 			cursor.execute(' INSERT INTO hierarchy(pid, cid, yn_direct_child) '\
-						' SELECT a.id, b.id, CASE WHEN a.path = \'' + subdirpath + '\' THEN \'Y\' ELSE \'N\' END FROM items a, items b '\
-						' WHERE b.path = \'' + path + '\' '\
+						' SELECT a.id, b.id, CASE WHEN a.path = ? THEN \'Y\' ELSE \'N\' END FROM items a, items b '\
+						' WHERE b.path = ? '\
 						' AND   b.path like a.path || \'%\' '\
 						' AND   b.path != a.path '\
 						' AND   a.type = \'D\' '\
-						)
+						, (subdirpath, path))
 			yn_direct_child = 'N'
 		else:
 			yn_direct_child = 'Y'
 		
-		cursor.execute(' INSERT INTO hierarchy(pid, cid, yn_direct_child) SELECT 0, id,\''+yn_direct_child+'\' FROM items WHERE path = \'' + path + '\' ')
+		cursor.execute(' INSERT INTO hierarchy(pid, cid, yn_direct_child) SELECT 0, id,? FROM items WHERE path = ? ', (yn_direct_child, path))
 		self.connection.commit()
 		
 	def truncateAll(self):
@@ -123,12 +123,12 @@ class TagDB:
 			return
 		
 		cursor = self.connection.cursor()
-		cursor.execute('SELECT id FROM items where path = \'' + path +'\' AND type = \'D\'')
+		cursor.execute('SELECT id FROM items where path = ? AND type = \'D\'', (path,))
 		r = cursor.fetchone()
 		id = r[0]
-		cursor.execute('DELETE FROM tags  WHERE fid in (SELECT cid FROM hierarchy where pid = ' + str(id) +')')
-		cursor.execute('DELETE FROM items WHERE id in (SELECT cid FROM hierarchy where pid = ' + str(id) +')')
-		cursor.execute('DELETE FROM hierarchy WHERE pid in (SELECT cid FROM hierarchy where pid = ' + str(id) +')')
+		cursor.execute('DELETE FROM tags  WHERE fid in (SELECT cid FROM hierarchy where pid = ' + str(id)+')')
+		cursor.execute('DELETE FROM items WHERE id in (SELECT cid FROM hierarchy where pid = ' + str(id)+')')
+		cursor.execute('DELETE FROM hierarchy WHERE pid in (SELECT cid FROM hierarchy where pid = ' + str(id)+')')
 		cursor.execute('DELETE FROM hierarchy WHERE pid = ' + str(id))
 		cursor.execute('DELETE FROM tags WHERE fid = ' + str(id))
 		cursor.execute('DELETE FROM items where id = ' + str(id))
@@ -138,40 +138,40 @@ class TagDB:
 		cursor = self.connection.cursor()
 		
 		if path == '/':
-			cursor.execute(' INSERT INTO tags (fid, tag) VALUES (0, \'' + tag + '\')')
+			cursor.execute(' INSERT INTO tags (fid, tag) VALUES (0, ?)', (tag,))
 		
 		else:
 			cursor.execute('INSERT INTO tags(fid, tag) '\
-						'SELECT id, \'' + tag + '\' '\
+						'SELECT id, ? '\
 						'FROM items '\
-						'WHERE path = \'' + path + '\'')
+						'WHERE path = ?', (tag, path))
 			
 		self.connection.commit()
 		
 	def addTagToFile(self, tag, file):
 		cursor = self.connection.cursor()
 		cursor.execute('INSERT INTO tags(fid, tag) '\
-					   'SELECT id, \'' + tag + '\' '\
+					   'SELECT id, ? '\
 					   'FROM items '\
-					   'WHERE path = \''+file+'\'')
+					   'WHERE path = ? ', (tag, file))
 		self.connection.commit()
 		
 	def removeTagFromDirectory(self,tag,path):
 		cursor = self.connection.cursor()
 		
 		if path == '/':
-			cursor.execute(' DELETE FROM tags where fid = 0 AND tag = \''+tag+'\'') 
+			cursor.execute(' DELETE FROM tags where fid = 0 AND tag = ?', (tag,)) 
 		else:
 			cursor.execute(' DELETE FROM tags '\
-						' WHERE fid = (SELECT id FROM items WHERE path = \''+path+'\') '\
-					   	' AND tag = \''+tag+'\'')
+						' WHERE fid = (SELECT id FROM items WHERE path = ?) '\
+					   	' AND tag = ?', (path, tag))
 		self.connection.commit()
 		
 	def removeTagFromFile(self,tag,file):
 		cursor = self.connection.cursor()
 		cursor.execute(' DELETE FROM tags '\
-					   ' WHERE fid = (SELECT id FROM items WHERE path = \''+file+'\') '\
-					   ' AND tag = \''+ tag + '\'' )
+					   ' WHERE fid = (SELECT id FROM items WHERE path = ?) '\
+					   ' AND tag = ? ', (file, tag) )
 		self.connection.commit()
 		
 	def removeAllTagsFromDirectory(self,path):
@@ -181,14 +181,14 @@ class TagDB:
 			cursor.execute(' DELETE FROM tags where fid = 0') 
 		else:
 			cursor.execute('DELETE FROM tags '\
-					   	'WHERE fid = (SELECT id FROM items WHERE path = \''+path+'\')')
+					   	'WHERE fid = (SELECT id FROM items WHERE path = ?)', (path,))
 			
 		self.connection.commit()
 		
 	def removeAllTagsFromFile(self,file):
 		cursor = self.connection.cursor()
 		cursor.execute(' DELETE FROM tags '\
-					   ' WHERE fid in (SELECT id FROM items WHERE path = \''+file+'\')')
+					   ' WHERE fid in (SELECT id FROM items WHERE path = ?)', (file,))
 		self.connection.commit()
 		
 	def resetTagsForDirectoryTo(self,path,taglist):
@@ -206,7 +206,7 @@ class TagDB:
 		
 		id = 0
 		if path != '/':
-			cursor.execute('SELECT id FROM items where path = \'' + path +'\' AND type = \'D\'')
+			cursor.execute('SELECT id FROM items where path = ? AND type = \'D\'', (path,))
 			r = cursor.fetchone()
 			if r == None:
 				return ([], [])
@@ -224,9 +224,9 @@ class TagDB:
 		cursor.execute(' SELECT b.tag FROM '\
 					   ' tags b '\
 					   ' WHERE b.fid in (SELECT a.pid FROM hierarchy a, items b '\
-					   ' 				 WHERE b.path = \'' + path + '\' '\
+					   ' 				 WHERE b.path = ? '\
 					   '                 AND   a.cid = b.id ' \
-					   					' UNION SELECT id FROM items where path = \'' + path + '\' )')
+					   					' UNION SELECT id FROM items where path = ? )', (path, path))
 		
 		for row in cursor:
 			ret.append(row[0])
@@ -289,9 +289,9 @@ class TagDB:
 		stmt += ' ) b '
 		stmt += ' WHERE a.id = b.fid '
 		stmt += ' AND a.type = \'F\' '
-		stmt += ' AND   a.path like \'%/' + filename +'\' '
+		stmt += ' AND   a.path like ? '
 		stmt += ' ) '
-		cursor.execute(stmt)
+		cursor.execute(stmt, ('%'+filename,))
 		
 		return cursor.fetchone()[0] == 1
 	
@@ -306,8 +306,8 @@ class TagDB:
 		stmt += ' ) b '
 		stmt += ' WHERE a.id = b.fid '
 		stmt += ' AND a.type = \'F\' '
-		stmt += ' AND   a.path like \'%/' + filename +'\' '
-		cursor.execute(stmt)
+		stmt += ' AND   a.path like ? '
+		cursor.execute(stmt, ('%'+filename,))
 		
 		for row in cursor:
 			ret.append(str(row[0])+'.'+row[1].replace('/','.')[1:])
@@ -335,8 +335,8 @@ class TagDB:
 		stmt += ' ) b '
 		stmt += ' WHERE a.id = b.fid '
 		stmt += ' AND a.type = \'F\' '
-		stmt += ' AND   a.path like \'%/' + filename +'\' '
-		cursor.execute(stmt)
+		stmt += ' AND   a.path like ? '
+		cursor.execute(stmt, ('%'+filename,))
 		
 		ret = cursor.fetchone()
 
