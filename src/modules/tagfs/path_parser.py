@@ -32,9 +32,14 @@ class PathParser:
 		return (ret, path, filename)
 	
 	
-	def get_source_file(self, path):
+	def get_source_file(self, path): 
+		
+		if path == '/':
+			return ' SELECT id as fid FROM items '
+		
 		parts, path, filename = self.parse(path)
-		q = ' SELECT fid, count(*) FROM tags WHERE tag IN(%s) GROUP BY fid HAVING count(*)=%d '
+		# TODO: exrtact path from optional "(in /path/in/itemsDir)"
+		q = ' SELECT fid, COUNT(*) FROM ( SELECT DISTINCT a.id as fid, b.tag FROM (SELECT a.id, b.pid FROM items a LEFT JOIN hierarchy b ON (a.id = b.cid)) a, tags b WHERE b.tag IN(%s) AND (b.fid = a.id OR b.fid = a.pid)) GROUP BY fid HAVING count(*)=%d '
 		query = ' UNION '.join([q % ("'"+"', '".join(x)+"'", len(x)) for x in parts])
 		return query
 		

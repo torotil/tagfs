@@ -244,39 +244,114 @@ class TagDB:
 		return ret 
 	
 	def listFilesForPath(self, path):
-		sqlpart = self.parser.get_source_file(path)
+		stmt = ''
 		ret = []
 		cursor = self.connection.cursor()
-		stmt  = ' SELECT a.path FROM '
-		stmt += ' items a, hierarchy b, ( '
-		stmt += sqlpart
-		stmt += ' ) c '
-		stmt += ' WHERE b.pid = c.fid '
-		stmt += ' AND   (a.id = b.pid OR a.id = b.cid) AND a.type = \'F\''
+		
+		if path == '/':
+			stmt = 'SELECT path FROM ITEMS where type = \'F\''
+		else:
+			sqlpart = self.parser.get_source_file(path)
+			stmt  = ' SELECT a.path FROM '
+			stmt += ' items a, ( '
+			stmt += sqlpart
+			stmt += ' ) b '
+			stmt += ' WHERE a.id = b.fid '
+			stmt += ' AND a.type = \'F\''
+			
 		cursor.execute(stmt)
+		
 		for row in cursor:
 			tmp=row[0]
-			ret.append(tmp.split('/')[len(tmp.split('/'))-1:])
+			ret.append(tmp.split('/')[len(tmp.split('/'))-1:][0])
 		
 		return list(set(ret))
 	
 	def isFile(self, path):
-		filename = path.split('/')[len(path.split('/'))-1:][0]
-		tmpPath = path.rstrip(filename).rstrip('/')
+		
+		filename = ''
+		tmpPath  = '' 
+		
+		if path.count('/') == 1:
+			filename = path[1:]
+			tmpPath = '/'
+
+		else:
+			filename = path.split('/')[len(path.split('/'))-1:][0]
+			tmpPath = path.rstrip(filename).rstrip('/')
+			
 		sqlpart = self.parser.get_source_file(tmpPath)
 		cursor = self.connection.cursor()
 		stmt =  ' SELECT  COUNT(*) FROM ( '
 		stmt += ' SELECT a.path FROM '
-		stmt += ' items a, hierarchy b, ( '
+		stmt += ' items a, ( '
 		stmt += sqlpart
-		stmt += ' ) c '
-		stmt += ' WHERE b.pid = c.fid '
-		stmt += ' AND   (a.id = b.pid OR a.id = b.cid) AND a.type = \'F\' '
-		stmt += ' AND   a.path like \'%' + filename +'\' '
+		stmt += ' ) b '
+		stmt += ' WHERE a.id = b.fid '
+		stmt += ' AND a.type = \'F\' '
+		stmt += ' AND   a.path like \'%/' + filename +'\' '
 		stmt += ' ) '
 		cursor.execute(stmt)
 		
 		return cursor.fetchone()[0] == 1
+	
+	def getDuplicatePaths(self, path):
+		ret = []
+		
+		filename = ''
+		tmpPath  = '' 
+		
+		if path.count('/') == 1:
+			filename = path[1:]
+			tmpPath = '/'
+
+		else:
+			filename = path.split('/')[len(path.split('/'))-1:][0]
+			tmpPath = path.rstrip(filename).rstrip('/')
+		
+		sqlpart = self.parser.get_source_file(tmpPath)
+		cursor = self.connection.cursor()
+		stmt = ' SELECT a.path FROM '
+		stmt += ' items a, ( '
+		stmt += sqlpart
+		stmt += ' ) b '
+		stmt += ' WHERE a.id = b.fid '
+		stmt += ' AND a.type = \'F\' '
+		stmt += ' AND   a.path like \'%/' + filename +'\' '
+		cursor.execute(stmt)
+		
+		for row in cursor:
+			ret.append(row[0].replace('/','.')[1:])
+
+		return ret 
+	
+	def getSourceFile(self, path):
+		
+		filename = ''
+		tmpPath  = '' 
+		
+		if path.count('/') == 1:
+			filename = path[1:]
+			tmpPath = '/'
+
+		else:
+			filename = path.split('/')[len(path.split('/'))-1:][0]
+			tmpPath = path.rstrip(filename).rstrip('/')
+		
+		sqlpart = self.parser.get_source_file(tmpPath)
+		cursor = self.connection.cursor()
+		stmt = ' SELECT a.path FROM '
+		stmt += ' items a, ( '
+		stmt += sqlpart
+		stmt += ' ) b '
+		stmt += ' WHERE a.id = b.fid '
+		stmt += ' AND a.type = \'F\' '
+		stmt += ' AND   a.path like \'%/' + filename +'\' '
+		cursor.execute(stmt)
+		
+		ret = cursor.fetchone()
+
+		return ret[0] 
 	
 	def getAvailableTagsForPath(self,path):
 		
