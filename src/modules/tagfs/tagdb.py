@@ -325,6 +325,34 @@ class TagDB:
 
 		return ret 
 	
+	def getSourceFile(self, path):
+		
+		filename = ''
+		tmpPath  = '' 
+		
+		if path.count('/') == 1:
+			filename = path[1:]
+			tmpPath = '/'
+
+		else:
+			filename = path.split('/')[len(path.split('/'))-1:][0]
+			tmpPath = path.rstrip(filename).rstrip('/')
+		
+		sqlpart = self.parser.get_source_file(tmpPath)
+		cursor = self.connection.cursor()
+		stmt = ' SELECT a.path FROM '
+		stmt += ' items a, ( '
+		stmt += sqlpart
+		stmt += ' ) b '
+		stmt += ' WHERE a.id = b.fid '
+		stmt += ' AND a.type = \'F\' '
+		stmt += ' AND   a.path like \'%/' + filename +'\' '
+		cursor.execute(stmt)
+		
+		ret = cursor.fetchone()
+
+		return ret[0] 
+	
 	def getAvailableTagsForPath(self,path):
 		
 		if path == '/' or path.endswith('OR'):
