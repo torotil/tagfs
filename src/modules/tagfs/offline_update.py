@@ -5,6 +5,8 @@ import os.path
 import time
 
 from tagdb import TagDB
+from tagfileutils import TagFileUtils
+
 
 class OfflineUpdater:
 	def __init__(self, config):
@@ -52,13 +54,12 @@ class OfflineUpdater:
 					print '\tremoving dir %s' % (os.path.join(current_dir, f))
 					db.removeDirectory(os.path.join(current_dir, f))
 
-			tagfile = os.path.join(root, '/.tag')
+			tagfile = os.path.join(root, '.tag')
 			if os.path.exists(tagfile) and os.path.getmtime(tagfile) > mtime:
 				# rescan .tag file
 				print 'rescan .tag file', tagfile
-				with open(tagfile, 'r') as f:
-					tags = [line for line in f] 
-				db.resetTagsForDirectoryTo(root, tags)
+				tf = TagFileUtils(self.config)
+				tf.updateDBFromTagFile(tagfile)
 
 		db.setModtime(new_mtime)
 		print 'offline update finished.'

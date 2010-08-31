@@ -25,6 +25,28 @@ import logging
 import node
 import os
 from transient_dict import TransientDict
+from tagdb import TagDB
+import fuse
+from stat import S_IFDIR, S_IFLNK, S_IFREG
+from time import time
+
+class MyStat(fuse.Stat):
+    
+    def __init__(self, fs):
+        self.st_mode = 0
+        self.st_ino = 0
+        self.st_dev = 0
+        self.st_nlink = 0
+        context = fs.GetContext()
+        self.st_uid, self.st_gid = context['uid'], context['gid']
+        self.st_size = 0
+        self.st_atime = 0
+        self.st_mtime = 0
+        self.st_ctime = 0
+
+    def __str__(self):
+        return '[' + ', '.join([field + ': ' + str(self.__dict__[field]) for field in self.__dict__]) + ']'
+
 
 class View(object):
     """Abstraction layer from fuse API.
@@ -42,6 +64,10 @@ class View(object):
         self.itemAccess = itemAccess
         self.config = config
         self._nodeCache = TransientDict(100)
+        
+    def getDB(self):
+        return TagDB(self.config.dbLocation) 
+
 
     @cache
     def getRootNode(self):
@@ -88,28 +114,60 @@ class View(object):
 
     @log.logCall
     def getattr(self, path):
-        n = self.getNode(path)
+        parts = path.rsplit('/', 1)
+        type = self.path_type(parts[0])
+        db = self.getDB()
+        attr = MyStat(self.config.fs)
+        if type == 'tags' and parts[1] == '':
+          attr.st_mode |= S_IFDIR | 0500
+          attr.st_nlink = 2
+          logging.warn('for root: ' + '%s' % attr)
+          return attr
+        if type == 'files':
+          if parts[1] not in ['OR', 'AND'] and db.isFile(path):
+            attr.st_mode |= S_IFLNK | 0400
+          else:
+            attr.st_mode |= S_IFDIR | 0500
+            attr.st_nlink = 2
+        if type == 'tags':
+          attr.st_mode |= S_IFDIR | 0500
+          attr.st_nlink = 2
+        if type == 'duplicates':
+          attr.st_mode |= S_IFLNK | 0400
+        logging.warn(attr)
+        return attr
 
-        if not n:
-            logging.debug('Try to read attributes from not existing node: ' + path)
 
-            return -errno.ENOENT
-
-        return n.getattr(path)
+    def path_type(self, path):
+      parts = path.rsplit('/', 2)
+      if parts[-1] in ['AND', 'OR', '']:
+        return 'tags'
+      if parts[-2] in ['', 'AND', 'OR']:
+        return 'files'
+      print 'duplicates'
 
     @log.logCall
     def readdir(self, path, offset):
-        n = self.getNode(path)
+      type = self.path_type(path)
+      
+      yield fuse.Direntry('.')
+      yield fuse.Direntry('..')
+      
+      if type == 'tags': 
+        logging.debug('handling as tag-dir: '+path)
+        files = self.getDB().getAvailableTagsForPath(path)
+      if type == 'files':
+        logging.debug('handling as files-dir')
+        files = self.getDB().listFilesForPath(path)
+      if type == 'duplicates':
+        files = ['duplicates']
 
-        if not n:
-            logging.warn('Try to read not existing directory: ' + path)
-
-            return -errno.ENOENT
-
-        return n.readdir(path, offset)
+      for n in files:
+        yield fuse.Direntry(n)
 
     @log.logCall
     def readlink(self, path):
+        
         n = self.getNode(path)
 
         if not n:
