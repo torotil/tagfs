@@ -35,20 +35,32 @@ class TagFileUtils:
 			parent = os.path.normpath(os.path.join(path, '..'))
 			directoryTags = [tag for tag in directoryTags if tag not in self.db.getTagsForItem(parent)]
 		
-		logging.debug("directory tags: " + directoryTags)
+		logging.debug("directory tags: " + str(directoryTags))
 
-		newtagfile = ''.join(directoryTags)
+		newtagfile = '\n'.join(directoryTags)
 
 		for f in filelist:
 			fileTags = [tag for tag in self.db.getTagsForItem(f) if tag not in self.db.getTagsForItem(path)]
-			logging.debug("tags for file " + f + ": " + fileTags)
+			logging.debug("tags for file " + f + ": " + str(fileTags))
 			if not fileTags == []:
-				newtagfile += "\n[\"" + os.path.basename(f) + "\"]\n" + ''.join(fileTags)
+				newtagfile += "\n\n[\"" + os.path.basename(f) + "\"]\n" + '\n'.join(fileTags)
 	
-		logging.debug("new .tag file:\n" + newtagfile + "\nwriting it to " + writepath + "/.tag")
-		f = open(writepath + "/.tag", "w")
-		f.write(newtagfile)
+		logging.debug("new .tag file would be:\n" + newtagfile)
+	
+		compareString = ""
+		f = open(writepath + "/.tag", "r")
+		for line in f:
+			print line,
+			compareString += line
 		f.close()
+
+		if newtagfile.strip() != compareString.strip():
+			logging.debug("writing new tagfile to " + writepath + "/.tag")
+			f = open(writepath + "/.tag", "w")
+			f.write(newtagfile)
+			f.close()
+			return
+		logging.debug("tagfile would be the same, not writing it...")
 
 	# parses a tagfile and updates the db
 	def updateDBFromTagFile(self, tagfile):
