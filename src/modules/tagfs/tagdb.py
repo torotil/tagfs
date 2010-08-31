@@ -1,12 +1,17 @@
 import sqlite3
 
 class TagDB:
+	"""Class used for access to a SQLite Database -> is responsible for storing information about
+	   files, directories, tags and their hierarchy"""
 
 	#TODO use prepared sql statements
 	#TODO Atomic commits
 	#TODO MEMORY OPTION
 	#TODO check for thread safety
 	def __init__(self, location, sql="", memory=False) :
+		"""Constructor:
+						location = /path/to/sqlitedatabase 
+						sql and memory are currently not used"""
 		self.connection = sqlite3.connect(location)
 		cursor = self.connection.cursor()
 		
@@ -32,21 +37,25 @@ class TagDB:
 		self.connection.commit()
 		
 	def removeAllTempPaths(self):
+		"removes all temporary paths"
 		cursor = self.connection.cursor()
 		cursor.execute('DELETE FROM temppaths')
 		self.connection.commit()
 		
 	def createTempPath(self, path):
+		"creates a temporary path"
 		cursor = self.connection.cursor()
 		cursor.execute('INSERT INTO temppaths(path) VALUES (?)', (path,))
 		self.connection.commit()
 		
 	def removeTempPath(self, path):
+		"removes all temporary paths which start with PATH"
 		cursor = self.connection.cursor()
 		cursor.execute('DELETE FROM temppaths WHERE path like (?) || \'%\'  ', (path,))
 		self.connection.commit()
 		
 	def getTempPaths(self):
+		"returns a list of all temporary paths"
 		ret = []
 		cursor = self.connection.cursor()
 		cursor.execute('SELECT path FROM temppaths')
@@ -57,16 +66,20 @@ class TagDB:
 		
 		
 	def getModtime(self):
+		"returns the modification time of the source folder"
 		cursor = self.connection.cursor()
 		cursor.execute('SELECT modtime FROM global_metadata')
 		return cursor.fetchone()[0]
 	
 	def setModtime(self,timestamp):
+		"used to store the modification time of the source folder"
 		cursor = self.connection.cursor()
 		cursor.execute('UPDATE global_metadata set modtime = '+ str(timestamp))
 		self.connection.commit()
 		
 	def addFile(self, file):
+		"""adds a file to the db, if the directories in the parameters path are currently not stored they will be added
+		   automatically"""
 		cursor = self.connection.cursor()
 		subdirs = file.split('/')
 		
@@ -97,6 +110,7 @@ class TagDB:
 		self.connection.commit()
 		
 	def removeFile(self, file):
+		"""removes a file from the database"""
 		cursor = self.connection.cursor()
 		cursor.execute('DELETE FROM tags WHERE fid = (SELECT id FROM items where path = ? AND type = \'F\')', (file,))
 		cursor.execute('DELETE FROM hierarchy WHERE cid = (SELECT id FROM items where path = ? AND type = \'F\')', (file,))
@@ -104,6 +118,8 @@ class TagDB:
 		self.connection.commit() 
 		
 	def addDirectory(self, path):
+		"""adds a directory to the db, if the directories in the parameters path are currently not stored they will be added
+		   automatically"""
 		cursor = self.connection.cursor()
 		
 		subdirs = path.split('/')
@@ -134,6 +150,7 @@ class TagDB:
 		self.connection.commit()
 		
 	def truncateAll(self):
+		"deletes the whole database"
 		cursor = self.connection.cursor()
 		cursor.execute('DELETE FROM tagvalues')  
 		cursor.execute('DELETE FROM tags') 
@@ -142,7 +159,7 @@ class TagDB:
 		self.connection.commit()
 		
 	def removeDirectory(self, path):
-		
+		"""removes a directory and all it's children from the database"""
 		if path == '/':
 			self.truncateAll()
 			return
@@ -160,6 +177,7 @@ class TagDB:
 		self.connection.commit()
 		
 	def addTagToDirectory(self, tag, path):
+		"""tags fdirectory at *path (and all its children) with *tag"""
 		cursor = self.connection.cursor()
 		
 		if path == '/':
@@ -174,6 +192,7 @@ class TagDB:
 		self.connection.commit()
 		
 	def addTagToFile(self, tag, file):
+		"tags *file with *tag"
 		cursor = self.connection.cursor()
 		cursor.execute('INSERT INTO tags(fid, tag) '\
 					   'SELECT id, ? '\
@@ -182,6 +201,7 @@ class TagDB:
 		self.connection.commit()
 		
 	def removeTagFromDirectory(self,tag,path):
+		"removes the tag from the directory and all it's children"
 		cursor = self.connection.cursor()
 		
 		if path == '/':
@@ -193,6 +213,7 @@ class TagDB:
 		self.connection.commit()
 		
 	def removeTagFromFile(self,tag,file):
+		"removes a tag from a file"
 		cursor = self.connection.cursor()
 		cursor.execute(' DELETE FROM tags '\
 					   ' WHERE fid = (SELECT id FROM items WHERE path = ?) '\
@@ -200,6 +221,7 @@ class TagDB:
 		self.connection.commit()
 		
 	def removeAllTagsFromDirectory(self,path):
+		"removes all tags from directory"
 		cursor = self.connection.cursor()
 		
 		if path == '/':
@@ -211,17 +233,20 @@ class TagDB:
 		self.connection.commit()
 		
 	def removeAllTagsFromFile(self,file):
+		"removes all tags from file"
 		cursor = self.connection.cursor()
 		cursor.execute(' DELETE FROM tags '\
 					   ' WHERE fid in (SELECT id FROM items WHERE path = ?)', (file,))
 		self.connection.commit()
 		
 	def resetTagsForDirectoryTo(self,path,taglist):
+		"removes all tags from directory and tags it with taglist"
 		self.removeAllTagsFromDirectory(path)
 		for tag in taglist:
 			self.addTagToDirectory(tag, path)  
 			
 	def resetTagsForFileTo(self,file,taglist):
+		"removes all tags from file and tags it with taglist"
 		self.removeAllTagsFromFile(file)
 		for tag in taglist:
 			self.addTagToFile(tag, file)
@@ -244,6 +269,7 @@ class TagDB:
 		return (dirs, files)
 		
 	def getTagsForItem(self, path):
+		"returns a list of all tags for given file/directory"
 		cursor = self.connection.cursor()
 		ret = []
 		cursor.execute(' SELECT b.tag FROM '\
@@ -259,12 +285,15 @@ class TagDB:
 		return ret	
 	
 	def isValidTagCombination(self, tags):
+		"""checks if a combination of tags is valid for any file in the database
+		   tags is a [list of AND linked tags] all sub lists are linked with or"""
 		cursor = self.connection.cursor()
 		cursor.execute('SELECT COUNT(*) from ('+self.getSourceFileSQL(tags)+')')	
 		
 		return cursor.fetchone()[0] >0
 	
 	def getTagsForTagCloud(self):
+		"""returns all tags"""
 		cursor = self.connection.cursor()
 		ret = []
 		cursor.execute('SELECT tag FROM tags')
@@ -275,6 +304,7 @@ class TagDB:
 		return ret 
 	
 	def listFilesForPath(self, tags):
+		"""returns all files which are tagged with tags"""
 		stmt = ''
 		ret = []
 		cursor = self.connection.cursor()
@@ -299,6 +329,8 @@ class TagDB:
 		return list(set(ret))
 	
 	def isFile(self, tags, filename):
+		"""returns true if the given filename is unique for the given list of tags, if there are multiple files which match
+		   then false is returned else null"""
 		sqlpart = self.getSourceFileSQL(tags)
 		cursor = self.connection.cursor()
 		stmt =  ' SELECT  COUNT(*) FROM ( '
@@ -319,6 +351,7 @@ class TagDB:
 		return ret == 1
 	
 	def getDuplicatePaths(self, tags, filename):
+		"""returnes the path for all files which are not unique for the given list of tags"""
 		ret = []
 		
 		sqlpart = self.getSourceFileSQL(tags)
