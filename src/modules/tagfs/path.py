@@ -3,6 +3,8 @@ from tagdb import TagDB
 import os
 import copy
 from stat import S_IFDIR, S_IFLNK, S_IFREG
+from fuse import FuseOSError
+import errno
 
 def split_list(sep, list):
 	res = []
@@ -81,7 +83,7 @@ class Path:
 		ret = os.path.abspath(os.path.join(self.config.itemsDir, self.readlinkRel(filename)[1:]))
 		
 		if ret == None:
-			raise FuseOSError(ENOENT)
+			raise FuseOSError(errno.ENOENT)
 		
 		return ret
 	
@@ -98,17 +100,11 @@ class FilesPath(Path):
 	def readdir(self):
 		return self.sd + ['AND', 'OR'] + self.db().listFilesForPath(self.tags)
 	def getattr(self, file):
-<<<<<<< HEAD
-		
-		chk = self.db().isFile('/'.join([self.path, file]))
-		
+		chk = self.db().isFile(self.tags, file)
 		if chk == None:
-			raise FuseOSError(ENOENT)
+			raise FuseOSError(errno.ENOENT)
 		
 		if file not in ['OR', 'AND'] and chk:
-=======
-		if file not in ['OR', 'AND'] and self.db().isFile(self.tags, file):
->>>>>>> a090dce4c0b31afd10f1d3a56050ccacd2d48e12
 			return self.getStat(st_mode = S_IFLNK | 0400)
 		else:
 			return self.getStat(st_mode = S_IFDIR | 0500, st_nlink = 2)
