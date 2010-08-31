@@ -1,5 +1,4 @@
 import sqlite3
-from path_parser import *
 
 class TagDB:
 
@@ -10,7 +9,6 @@ class TagDB:
 	def __init__(self, location, sql="", memory=False) :
 		self.connection = sqlite3.connect(location)
 		cursor = self.connection.cursor()
-		self.parser=PathParser()
 		
 		#TODO BETTER INDIZES + KEYs
 		
@@ -267,20 +265,8 @@ class TagDB:
 		
 		return list(set(ret))
 	
-	def isFile(self, path):
-		
-		filename = ''
-		tmpPath  = '' 
-		
-		if path.count('/') == 1:
-			filename = path[1:]
-			tmpPath = '/'
-
-		else:
-			filename = path.split('/')[len(path.split('/'))-1:][0]
-			tmpPath = path.rstrip(filename).rstrip('/')
-			
-		sqlpart = self.parser.get_source_file(tmpPath)
+	def isFile(self, tags, filename):
+		sqlpart = self.getSourceFileSQL(tags)
 		cursor = self.connection.cursor()
 		stmt =  ' SELECT  COUNT(*) FROM ( '
 		stmt += ' SELECT a.path FROM '
@@ -317,20 +303,9 @@ class TagDB:
 
 		return ret 
 	
-	def getSourceFile(self, path):
+	def getSourceFile(self, tags, filename):
 		
-		filename = ''
-		tmpPath  = '' 
-		
-		if path.count('/') == 1:
-			filename = path[1:]
-			tmpPath = '/'
-
-		else:
-			filename = path.split('/')[len(path.split('/'))-1:][0]
-			tmpPath = path.rstrip(filename).rstrip('/')
-		
-		sqlpart = self.parser.get_source_file(tmpPath)
+		sqlpart = self.getSourceFileSQL(tags)
 		cursor = self.connection.cursor()
 		stmt = ' SELECT a.path FROM '
 		stmt += ' items a, ( '

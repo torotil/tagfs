@@ -86,7 +86,7 @@ class Path:
 		return ret
 	
 	def readlinkRel(self, filename):
-		return self.db().getSourceFile('/'.join([self.path, filename]))
+		return self.db().getSourceFile(self.tags, filename)
 
 class TagPath(Path):
 	def readdir(self):
@@ -98,6 +98,7 @@ class FilesPath(Path):
 	def readdir(self):
 		return self.sd + ['AND', 'OR'] + self.db().listFilesForPath(self.tags)
 	def getattr(self, file):
+<<<<<<< HEAD
 		
 		chk = self.db().isFile('/'.join([self.path, file]))
 		
@@ -105,6 +106,9 @@ class FilesPath(Path):
 			raise FuseOSError(ENOENT)
 		
 		if file not in ['OR', 'AND'] and chk:
+=======
+		if file not in ['OR', 'AND'] and self.db().isFile(self.tags, file):
+>>>>>>> a090dce4c0b31afd10f1d3a56050ccacd2d48e12
 			return self.getStat(st_mode = S_IFLNK | 0400)
 		else:
 			return self.getStat(st_mode = S_IFDIR | 0500, st_nlink = 2)
