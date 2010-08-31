@@ -176,7 +176,7 @@ class TagFS(fuse.Fuse):
         c = Config()
         c.enableValueFilters = opts.enableValueFilters
         c.enableRootItemLinks = opts.enableRootItemLinks
-        c.itemsDir = opts.itemsDir
+        c.itemsDir = os.path.abspath(opts.itemsDir)
         c.dbLocation = os.path.abspath(os.path.join(c.itemsDir, opts.dbLocation))
         c.fs = self
 
