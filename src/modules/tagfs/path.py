@@ -90,6 +90,11 @@ class TagPath(Path):
 	def readdir(self):
 		return self.sd + self.db().getAvailableTagsForPath(self.tags)
 	def getattr(self, file):
+		if len(file) > 0:
+			self.tags[-1].append(file)
+			exists = all([self.db().isValidTagCombination([t]) for t in self.tags])
+			if not exists:
+				raise FuseOSError(errno.ENOENT)
 		return self.getStat(st_mode = S_IFDIR | 0500, st_nlink = 2)
 
 class FilesPath(Path):
