@@ -3,6 +3,8 @@ from tagdb import TagDB
 import os
 import copy
 from stat import S_IFDIR, S_IFLNK, S_IFREG
+from fuse import FuseOSError
+import errno
 
 def split_list(sep, list):
 	res = []
@@ -48,7 +50,6 @@ class Path:
 	def __init__(self, config, path, tags, last):
 		self.config = config
 		tags[-1][-1] = tags[-1][-1][:1]
-		self.valid = True
 		self.path = path
 		self.tags = self.simplifyTags(tags)
 		self.rest = last[1:]
@@ -56,14 +57,11 @@ class Path:
 	def simplifyTags(self, tags):
 		for i in range(0, len(tags)):
 			s = tags[i]
-			tags[i] = [x[0] for x in s if len(x)] 
 			for x in s:
 				if len(x) > 1:
-					self.valid = False
+					raise FuseOSError(errno.ENOENT)
+			tags[i] = [x[0] for x in s if len(x)] 
 		return tags
-	
-	def isValid(self):
-		return self.valid
 		
 	def db(self):
 		return TagDB(self.config.dbLocation)
@@ -78,22 +76,46 @@ class Path:
 		return '%s: %s + %s' % (self.__class__.__name__, self.tags, self.rest)
 	
 	def readlink(self, filename):
-		return os.path.abspath(os.path.join(self.config.itemsDir, self.readlinkRel(filename)[1:]))
+		ret = os.path.abspath(os.path.join(self.config.itemsDir, self.readlinkRel(filename)[1:]))
+		
+		if ret == None:
+			raise FuseOSError(errno.ENOENT)
+		
+		return ret
 	
 	def readlinkRel(self, filename):
 		return self.db().getSourceFile(self.tags, filename)
+	
+	def mkdir(self, dir, mode):
+		raise FuseOSError(errno.EPERM)
 
 class TagPath(Path):
 	def readdir(self):
 		return self.sd + self.db().getAvailableTagsForPath(self.tags)
 	def getattr(self, file):
+		if len(file) > 0:
+			db = self.db()
+			if not file in db.getTempPaths():
+				self.tags[-1].append(file)
+				exists = all([db.isValidTagCombination([t]) for t in self.tags])
+				if not exists:
+					raise FuseOSError(errno.ENOENT)
 		return self.getStat(st_mode = S_IFDIR | 0500, st_nlink = 2)
+	def mkdir(self, dir, mode):
+		if len(self.tags) > 1:
+			raise FuseOSError(errno.EPERM)
+		self.db().createTempPath(dir)
 
 class FilesPath(Path):
+	and_or = ['AND', 'OR']
 	def readdir(self):
-		return self.sd + ['AND', 'OR'] + self.db().listFilesForPath(self.tags)
+		return self.sd + self.and_or + self.db().listFilesForPath(self.tags)
 	def getattr(self, file):
-		if file not in ['OR', 'AND'] and self.db().isFile(self.tags, file):
+		chk = self.db().isFile(self.tags, file)
+		if chk == None and file not in self.and_or:
+			raise FuseOSError(errno.ENOENT)
+		
+		if file not in self.and_or and chk:
 			return self.getStat(st_mode = S_IFLNK | 0400)
 		else:
 			return self.getStat(st_mode = S_IFDIR | 0500, st_nlink = 2)
@@ -105,4 +127,4 @@ class DuplicatesPath(Path):
 	def getattr(self, file):
 		return self.getStat(st_mode = S_IFLNK | 0400)
 	def readlinkRel(self, filename):
-		return self.db().getDuplicateSourceFile('/'.join([self.path, filename]))
+		return self.db().getDuplicateSourceFile(self.tags, filename)
