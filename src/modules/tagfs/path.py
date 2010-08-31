@@ -25,6 +25,10 @@ class PathFactory:
 			return FilesPath(self.config, parts, last)
 		return DuplicatesPath(self.config, parts, last)
 	
+	def createForFile(self, path):
+		dir, file = path.rpslit('/', 1)
+		return self.create(dir), file
+	
 	@staticmethod
 	def parts(path):
 		if len(path) <= 0:
