@@ -74,18 +74,17 @@ class Loopback(LoggingMixIn, Operations):
 		
 		getxattr = None
 		
-		def link(self, target, source):
-				return os.link(source, target)
+		link = None
 		
 		listxattr = None
-		mkdir = None
+		def mkdir(self, path, mode):
+			p, dir = self.path.createForFile(path)
+			p.mkdir(dir, mode)
+			
 		mknod = None
 		open = os.open
 				
-		def read(self, path, size, offset, fh):
-				with self.rwlock:
-						os.lseek(fh, offset, 0)
-						return os.read(fh, size)
+		read = None
 		
 		#def readdir(self, path, fh):
 		#		return ['.', '..']
@@ -100,7 +99,7 @@ class Loopback(LoggingMixIn, Operations):
 		def rename(self, old, new):
 				return os.rename(old, self.root + new)
 		
-		rmdir = os.rmdir
+		rmdir = None
 		
 		def statfs(self, path):
 				stv = os.statvfs(path)
