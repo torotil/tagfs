@@ -20,15 +20,16 @@ from tagdb import TagDB
 from stat import S_IFDIR, S_IFLNK, S_IFREG
 
 
-def stat():
-	d = {'st_mode':0, 'st_nlink':0 }
-	return d
+class Stat:
+	def __init__(self):
+		self.uid = os.geteuid()
+		self.gid = os.getegid()
+	def fetch(self):
+		d = {'st_mode':0, 'st_nlink':0, 'st_uid':self.uid, 'st_gid':self.gid }
+		return d
 #    def __init__(self, fs):
-#        self.st_mode = 0
 #        self.st_ino = 0
 #        self.st_dev = 0
-#        self.st_nlink = 0
-#        self.st_uid, self.st_gid = context['uid'], context['gid']
 #        self.st_size = 0
 #        self.st_atime = 0
 #        self.st_mtime = 0
@@ -39,6 +40,7 @@ class Loopback(LoggingMixIn, Operations):
 				self.root = realpath(config.itemsDir)
 				self.rwlock = Lock()
 				self.config = config
+				self.stat = Stat()
 		
 		def getDB(self):
 			return TagDB(self.config.dbLocation)
@@ -66,7 +68,7 @@ class Loopback(LoggingMixIn, Operations):
 			parts = path.rsplit('/', 1)
 			type = self.path_type(parts[0])
 			db = self.getDB()
-			attr = stat()
+			attr = self.stat.fetch()
 			if type == 'tags' and parts[1] == '':
 				attr['st_mode'] |= S_IFDIR | 0500
 				attr['st_nlink'] = 2
@@ -107,14 +109,16 @@ class Loopback(LoggingMixIn, Operations):
 		def readdir(self, path, fh):
 			type = self.path_type(path)
 			
+			files = []
 			if type == 'tags': 
 				logging.debug('handling as tag-dir: '+path)
-				files = self.getDB().getAvailableTagsForPath(path)
+				files += self.getDB().getAvailableTagsForPath(path)
 			if type == 'files':
 				logging.debug('handling as files-dir')
-				files = self.getDB().listFilesForPath(path)
+				files += ['OR', 'AND']
+				files += self.getDB().listFilesForPath(path)
 			if type == 'duplicates':
-				files = ['duplicates']
+				files = [os.path.split(x)[1] for x in self.getDB().getDuplicatePaths(path)]
 			
 			logging.debug('answer from database: %s' % files)
 			return ['.', '..'] + files
@@ -134,14 +138,15 @@ class Loopback(LoggingMixIn, Operations):
 						'f_frsize', 'f_namemax'))
 		
 		def symlink(self, target, source):
-				return os.symlink(source, target)
+				logging.debug('link %s -> %s ?')
+				#return os.symlink(source, target)
 		
-		def truncate(self, path, length, fh=None):
-				with open(path, 'r+') as f:
-						f.truncate(length)
+		#def truncate(self, path, length, fh=None):
+		#		with open(path, 'r+') as f:
+		#				f.truncate(length)
 		
-		unlink = os.unlink
-		utimens = os.utime
+		#unlink = os.unlink
+		#utimens = os.utime
 		
 		def write(self, path, data, offset, fh):
 				with self.rwlock:
@@ -168,6 +173,7 @@ def setUpLogging():
 				import cgitb
 
 				txt = cgitb.text((eType, eValue, eTraceBack))
+
 
 				logging.fatal(txt)
 		
