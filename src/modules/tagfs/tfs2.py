@@ -118,8 +118,6 @@ class Loopback(LoggingMixIn, Operations):
 			
 			logging.debug('answer from database: %s' % files)
 			return ['.', '..'] + files
-			
-		readlink = os.readlink
 		
 		def release(self, path, fh):
 				return os.close(fh)
@@ -157,6 +155,9 @@ class Loopback(LoggingMixIn, Operations):
 			if parts[-2] in ['', 'AND', 'OR']:
 				return 'files'
 			return 'duplicates'
+		
+		def readlink(self, path):
+			return os.path.abspath(os.path.join(self.config.itemsDir, self.getDB().getSourceFile(path)[1:]))
 		
 
 class Config:
