@@ -10,7 +10,6 @@ class EventHandler(pyinotify.ProcessEvent):
 
 	def __init__(self, config):
 		self.config = config
-		debug = True
 		tagfsroot = self.config.itemsDir
 		tfu = TagFileUtils(self.config)
 		#connect to the database

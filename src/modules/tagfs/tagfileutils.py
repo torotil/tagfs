@@ -8,7 +8,6 @@ import logging
 class TagFileUtils:
 
 	def __init__(self, config):
-		debug = True
 		self.config = config
 		self.db = TagDB(self.config.dbLocation)
 
