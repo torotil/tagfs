@@ -68,8 +68,9 @@ class TagFileUtils:
 					else:
 						# syntax error!
 						pass
-				# add tag to current tag-list
-				insertList.append(tag)
+				else:
+					# add tag to current tag-list
+					insertList.append(tag)
 		
 		logging.debug("directory tags: " + str(directoryTags))
 		self.db.resetTagsForDirectoryTo(self.mkpath(tagfile[:-5]), directoryTags)
