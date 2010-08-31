@@ -76,6 +76,12 @@ class Path:
 	
 	def __repr__(self):
 		return '%s: %s + %s' % (self.__class__.__name__, self.tags, self.rest)
+	
+	def readlink(self, filename):
+		return os.path.abspath(os.path.join(self.config.itemsDir, self.readlinkRel(filename)[1:]))
+	
+	def readlinkRel(self, filename):
+		return self.db().getSourceFile('/'.join([self.path, filename]))
 
 class TagPath(Path):
 	def readdir(self):
@@ -98,3 +104,5 @@ class DuplicatesPath(Path):
 		return self.sd + self.db().getDuplicatePaths(self.tags, self.rest[-1])
 	def getattr(self, file):
 		return self.getStat(st_mode = S_IFLNK | 0400)
+	def readlinkRel(self, filename):
+		return self.db().getDuplicateSourceFile('/'.join([self.path, filename]))

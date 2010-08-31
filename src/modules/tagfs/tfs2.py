@@ -124,20 +124,9 @@ class Loopback(LoggingMixIn, Operations):
 						os.lseek(fh, offset, 0)
 						return os.write(fh, data)
 		
-		def path_type(self, path):
-			parts = path.rsplit('/', 2)
-			if parts[-1] in ['AND', 'OR', '']:
-				return 'tags'
-			if parts[-2] in ['', 'AND', 'OR']:
-				return 'files'
-			return 'duplicates'
-		
 		def readlink(self, path):
-			if self.path_type(path.rsplit('/', 1)[0]) == 'duplicates':
-				path = self.getDB().getDuplicateSourceFile(path)
-			else:
-				path = self.getDB().getSourceFile(path) 
-			return os.path.abspath(os.path.join(self.config.itemsDir, path[1:]))
+			p, filename = self.path.createForFile(path)
+			return p.readlink(filename)
 		
 
 class Config:
