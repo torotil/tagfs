@@ -29,7 +29,7 @@ class EventHandler(pyinotify.ProcessEvent):
 	def process_IN_CREATE(self, event):
 		new_mtime = time()
 		
-		if event.name.startswith("."):
+		if event.name.startswith(".tag-db") or event.name.endswith(".swx") or event.name.endswith(".swp"):
 			# do nothing
 			return
 		elif os.path.isdir(event.pathname):
@@ -49,7 +49,7 @@ class EventHandler(pyinotify.ProcessEvent):
 	def process_IN_DELETE(self, event):
 		new_mtime = time()
 
-		if event.name.startswith("."):
+		if event.name.startswith(".tag-db") or event.name.endswith(".swx") or event.name.endswith(".swp"):
 			# do nothing
 			return
 		elif os.path.isdir(event.pathname):

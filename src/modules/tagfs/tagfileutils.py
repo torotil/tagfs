@@ -79,7 +79,7 @@ class TagFileUtils:
 		logging.debug("directory tags: " + str(directoryTags))
 		self.db.resetTagsForDirectoryTo(self.mkpath(tagfile[:-5]), directoryTags)
 		for file, taglist in fileTags.iteritems():
-			logging.debug("filetags for file %s : %s" % (self.mkpath(tagfile[:-5])+file, taglist))
-			self.db.resetTagsForFileTo(self.mkpath(tagfile[:5])+file, taglist)
+			logging.debug("filetags for file %s : %s" % (self.mkpath(tagfile[:-4])+file, taglist))
+			self.db.resetTagsForFileTo(self.mkpath(tagfile[:-4])+file, taglist)
 			
 
