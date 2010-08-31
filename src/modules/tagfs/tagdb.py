@@ -26,9 +26,14 @@ class TagDB:
 		cursor.execute('CREATE TABLE IF NOT EXISTS tagvalues   (tid INTEGER,value VARCHAR)')
 		cursor.execute('CREATE TABLE IF NOT EXISTS temppaths   (path VARCHAR)')
 		cursor.execute('INSERT OR IGNORE INTO items(path,type,id) VALUES(\'/\', \'D\',0)')
-		cursor.execute('DELETE FROM temppaths')
+		
 		
 		#cursor.execute('INSERT or IGNORE INTO items (id, type, path) VALUES (1, \'D\', \'/\')')
+		self.connection.commit()
+		
+	def removeAllTempPaths(self):
+		cursor = self.connection.cursor()
+		cursor.execute('DELETE FROM temppaths')
 		self.connection.commit()
 		
 	def createTempPath(self, path):
