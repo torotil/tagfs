@@ -10,8 +10,8 @@ class EventHandler(pyinotify.ProcessEvent):
 
 	def __init__(self, config):
 		self.config = config
-		tagfsroot = self.config.itemsDir
-		tfu = TagFileUtils(self.config)
+		self.tagfsroot = self.config.itemsDir
+		self.tfu = TagFileUtils(self.config)
 		#connect to the database
 
 		#wm = pyinotify.WatchManager()
@@ -32,29 +32,24 @@ class EventHandler(pyinotify.ProcessEvent):
 		return db
 
 	def mkpath(self, path):
-		prefix_len = len(tagfsroot)
+		prefix_len = len(self.tagfsroot)
 		newpath = path[prefix_len:]
 		if newpath == "": newpath = "/" 
-		if debug: print "original path: " + path
-		if debug: print "truncated path: " + newpath
 		return newpath
 
 	# a new file was created
 	def process_IN_CREATE(self, event):
 		db = self.getDB()
-		if debug: print "Created:", event.pathname
 		new_mtime = time()
 		
 		# directories need special care...
 		if os.path.isdir(event.pathname):
-			if debug: print "A directory has been created"
 			db.addDirectory(self.mkpath(event.pathname))
 			db.setModtime(new_mtime)
 			return
 		# ...so do hidden files
 		elif event.name.startswith("."):
 			# do nothing
-			if debug: print "A hidden file has been created, ignoring..."
 			return
 		# we have a file that we really wanna tag
 		else:
@@ -65,21 +60,17 @@ class EventHandler(pyinotify.ProcessEvent):
 	# a file was removed, so let's remove it from the db as well
 	def process_IN_DELETE(self, event):
 		db = self.getDB()
-		if debug: print "Deleting:", event.pathname
 		new_mtime = time()
 
 		# directories need special care...
 		if os.path.isdir(event.pathname):
-			if debug: print "A directory has been created"
 			db.removeDirectory(self.mkpath(event.pathname))
 			db.setModtime(new_mtime)
 			return
 		elif event.name.startswith("."):
 			# do nothing
-			if debug: print "A hidden file has been created, ignoring..."
 			return
 		else:
-			if debug: print "removing " + event.pathname + "from db"
 			db.removeFile(self.mkpath(event.pathname))
 			db.setModtime(new_mtime)
 
@@ -92,6 +83,5 @@ class EventHandler(pyinotify.ProcessEvent):
 		new_mtime = time()
 
 		if event.pathname.endswith("/.tag"):
-			if debug: print "changes have been made to a .tag file"
-			tfu.updateDBFromTagFile(event.pathname)
+			self.tfu.updateDBFromTagFile(event.pathname)
 			db.setModtime(new_mtime)
