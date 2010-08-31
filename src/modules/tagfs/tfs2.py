@@ -69,28 +69,8 @@ class Loopback(LoggingMixIn, Operations):
 				return os.fsync(fh)
 								
 		def getattr(self, path, fh=None):
-			parts = path.rsplit('/', 1)
-			type = self.path_type(parts[0])
-			db = self.getDB()
-			attr = self.stat.fetch()
-			if type == 'tags' and parts[1] == '':
-				attr['st_mode'] |= S_IFDIR | 0500
-				attr['st_nlink'] = 2
-				logging.warn('for root: ' + '%s' % attr)
-				return attr
-			if type == 'files':
-				if parts[1] not in ['OR', 'AND'] and db.isFile(path):
-					attr['st_mode'] |= S_IFLNK | 0400
-				else:
-					attr['st_mode'] |= S_IFDIR | 0500
-					attr['st_nlink'] = 2
-			if type == 'tags':
-				attr['st_mode'] |= S_IFDIR | 0500
-				attr['st_nlink'] = 2
-			if type == 'duplicates':
-				attr['st_mode'] |= S_IFLNK | 0400
-			logging.warn(attr)
-			return attr
+			p, filename = self.path.createForFile(path)
+			return p.getattr(filename)
 		
 		getxattr = None
 		
