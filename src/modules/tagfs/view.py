@@ -144,7 +144,7 @@ class View(object):
         return 'tags'
       if parts[-2] in ['', 'AND', 'OR']:
         return 'files'
-      print 'duplicates'
+      return 'duplicates'
 
     @log.logCall
     def readdir(self, path, offset):
@@ -161,8 +161,10 @@ class View(object):
         files = self.getDB().listFilesForPath(path)
       if type == 'duplicates':
         files = ['duplicates']
-
+      
+      logging.debug('answer from database: %s' % files)
       for n in files:
+        logging.debug('yielding %s' % n)
         yield fuse.Direntry(n)
 
     @log.logCall
