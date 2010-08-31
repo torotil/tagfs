@@ -1,5 +1,8 @@
 
 from tagdb import TagDB
+import os
+import copy
+from stat import S_IFDIR, S_IFLNK, S_IFREG
 
 def split_list(sep, list):
 	res = []
@@ -20,10 +23,14 @@ class PathFactory:
 		parts, last = self.parts(path)
 		d = len(last)
 		if d == 0:
-			return TagPath(self.config, parts, last)
+			return TagPath(self.config, path, parts, last)
 		if d == 1:
-			return FilesPath(self.config, parts, last)
-		return DuplicatesPath(self.config, parts, last)
+			return FilesPath(self.config, path, parts, last)
+		return DuplicatesPath(self.config, path, parts, last)
+	
+	def createForFile(self, path):
+		dir, file = path.rsplit('/', 1)
+		return self.create(dir), file
 	
 	@staticmethod
 	def parts(path):
@@ -37,23 +44,22 @@ class PathFactory:
 
 class Path:
 	sd = ['.', '..']
-	def __init__(self, config, tags, last):
+	stat = {'st_mode':0, 'st_nlink':0, 'st_uid':os.geteuid(), 'st_gid':os.getegid() }
+	def __init__(self, config, path, tags, last):
 		self.config = config
 		tags[-1][-1] = tags[-1][-1][:1]
 		self.valid = True
+		self.path = path
 		self.tags = self.simplifyTags(tags)
 		self.rest = last[1:]
 	
 	def simplifyTags(self, tags):
 		for i in range(0, len(tags)):
 			s = tags[i]
-			if s == [[]]:
-				tags[i] = []
-				continue
-			for j in range(0, len(s)):
-				if len(s[j]) > 1:
+			tags[i] = [x[0] for x in s if len(x)] 
+			for x in s:
+				if len(x) > 1:
 					self.valid = False
-				s[j] = s[j][0]
 		return tags
 	
 	def isValid(self):
@@ -62,17 +68,41 @@ class Path:
 	def db(self):
 		return TagDB(self.config.dbLocation)
 	
+	def getStat(self, **kwargs):
+		attr = copy.copy(self.stat)
+		for k, v in kwargs.iteritems():
+			attr[k] = v
+		return attr
+	
 	def __repr__(self):
 		return '%s: %s + %s' % (self.__class__.__name__, self.tags, self.rest)
+	
+	def readlink(self, filename):
+		return os.path.abspath(os.path.join(self.config.itemsDir, self.readlinkRel(filename)[1:]))
+	
+	def readlinkRel(self, filename):
+		return self.db().getSourceFile('/'.join([self.path, filename]))
 
 class TagPath(Path):
 	def readdir(self):
 		return self.sd + self.db().getAvailableTagsForPath(self.tags)
+	def getattr(self, file):
+		return self.getStat(st_mode = S_IFDIR | 0500, st_nlink = 2)
 
 class FilesPath(Path):
 	def readdir(self):
 		return self.sd + ['AND', 'OR'] + self.db().listFilesForPath(self.tags)
+	def getattr(self, file):
+		if file not in ['OR', 'AND'] and self.db().isFile('/'.join([self.path, file])):
+			return self.getStat(st_mode = S_IFLNK | 0400)
+		else:
+			return self.getStat(st_mode = S_IFDIR | 0500, st_nlink = 2)
+		
 
 class DuplicatesPath(Path):
 	def readdir(self):
 		return self.sd + self.db().getDuplicatePaths(self.tags, self.rest[-1])
+	def getattr(self, file):
+		return self.getStat(st_mode = S_IFLNK | 0400)
+	def readlinkRel(self, filename):
+		return self.db().getDuplicateSourceFile('/'.join([self.path, filename]))

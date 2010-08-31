@@ -69,28 +69,8 @@ class Loopback(LoggingMixIn, Operations):
 				return os.fsync(fh)
 								
 		def getattr(self, path, fh=None):
-			parts = path.rsplit('/', 1)
-			type = self.path_type(parts[0])
-			db = self.getDB()
-			attr = self.stat.fetch()
-			if type == 'tags' and parts[1] == '':
-				attr['st_mode'] |= S_IFDIR | 0500
-				attr['st_nlink'] = 2
-				logging.warn('for root: ' + '%s' % attr)
-				return attr
-			if type == 'files':
-				if parts[1] not in ['OR', 'AND'] and db.isFile(path):
-					attr['st_mode'] |= S_IFLNK | 0400
-				else:
-					attr['st_mode'] |= S_IFDIR | 0500
-					attr['st_nlink'] = 2
-			if type == 'tags':
-				attr['st_mode'] |= S_IFDIR | 0500
-				attr['st_nlink'] = 2
-			if type == 'duplicates':
-				attr['st_mode'] |= S_IFLNK | 0400
-			logging.warn(attr)
-			return attr
+			p, filename = self.path.createForFile(path)
+			return p.getattr(filename)
 		
 		getxattr = None
 		
@@ -144,20 +124,9 @@ class Loopback(LoggingMixIn, Operations):
 						os.lseek(fh, offset, 0)
 						return os.write(fh, data)
 		
-		def path_type(self, path):
-			parts = path.rsplit('/', 2)
-			if parts[-1] in ['AND', 'OR', '']:
-				return 'tags'
-			if parts[-2] in ['', 'AND', 'OR']:
-				return 'files'
-			return 'duplicates'
-		
 		def readlink(self, path):
-			if self.path_type(path.rsplit('/', 1)[0]) == 'duplicates':
-				path = self.getDB().getDuplicateSourceFile(path)
-			else:
-				path = self.getDB().getSourceFile(path) 
-			return os.path.abspath(os.path.join(self.config.itemsDir, path[1:]))
+			p, filename = self.path.createForFile(path)
+			return p.readlink(filename)
 		
 
 class Config:
