@@ -95,7 +95,6 @@ class TagPath(Path):
 	def getattr(self, file):
 		if len(file) > 0:
 			db = self.db()
-			print db.getTempPaths()
 			if not file in db.getTempPaths():
 				self.tags[-1].append(file)
 				exists = all([db.isValidTagCombination([t]) for t in self.tags])
@@ -105,9 +104,7 @@ class TagPath(Path):
 	def mkdir(self, dir, mode):
 		if len(self.tags) > 1:
 			raise FuseOSError(errno.EPERM)
-		print 'add temp dir', dir
 		self.db().createTempPath(dir)
-		print self.db().getTempPaths()
 
 class FilesPath(Path):
 	and_or = ['AND', 'OR']
