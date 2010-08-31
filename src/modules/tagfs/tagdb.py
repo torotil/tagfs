@@ -229,7 +229,13 @@ class TagDB:
 		for row in cursor:
 			ret.append(row[0])
 		
-		return ret		
+		return ret	
+	
+	def isValidTagCombination(self, tags):
+		cursor = self.connection.cursor()
+		cursor.execute('SELECT COUNT(*) from ('+self.getSourceFileSQL(tags)+')')	
+		
+		return cursor.fetchone()[0] >0
 	
 	def getTagsForTagCloud(self):
 		cursor = self.connection.cursor()
