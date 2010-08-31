@@ -24,10 +24,32 @@ class TagDB:
 		cursor.execute('CREATE TABLE IF NOT EXISTS items       (type VARCHAR(1), id INTEGER PRIMARY KEY, path VARCHAR UNIQUE)')
 		cursor.execute('CREATE TABLE IF NOT EXISTS tags        (tid INTEGER,fid INTEGER, type VARCHAR(1), tag VARCHAR)')
 		cursor.execute('CREATE TABLE IF NOT EXISTS tagvalues   (tid INTEGER,value VARCHAR)')
+		cursor.execute('CREATE TABLE IF NOT EXISTS temppaths   (path VARCHAR)')
 		cursor.execute('INSERT OR IGNORE INTO items(path,type,id) VALUES(\'/\', \'D\',0)')
+		cursor.execute('DELETE FROM temppaths')
 		
 		#cursor.execute('INSERT or IGNORE INTO items (id, type, path) VALUES (1, \'D\', \'/\')')
 		self.connection.commit()
+		
+	def createTempPath(self, path):
+		cursor = self.connection.cursor()
+		cursor.execute('INSERT INTO temppaths(path) VALUES (?)', (path,))
+		self.connection.commit()
+		
+	def removeTempPath(self, path):
+		cursor = self.connection.cursor()
+		cursor.execute('DELETE FROM temppaths WHERE path like (?) || \'%\'  ', (path,))
+		self.connection.commit()
+		
+	def getTempPaths(self):
+		ret = []
+		cursor = self.connection.cursor()
+		cursor.execute('SELECT path FROM temppaths')
+		for row in cursor:
+			ret.append(row[0])
+
+		return ret 
+		
 		
 	def getModtime(self):
 		cursor = self.connection.cursor()
