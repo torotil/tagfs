@@ -215,11 +215,11 @@ class TagFS(fuse.Fuse):
       ou.scan()
     
       self.multithreaded = 1
-      wm = pyinotify.WatchManager()
+      self.wm = pyinotify.WatchManager()
       mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE
-      notifier = pyinotify.ThreadedNotifier(wm, notifyd.EventHandler(self.config))
+      notifier = pyinotify.ThreadedNotifier(self.wm, notifyd.EventHandler(self.config))
       notifier.start()
-      wdd = wm.add_watch(self.config.itemsDir, mask, rec=True)
+      self.wdd = self.wm.add_watch(self.config.itemsDir, mask, rec=True)
 
 def main():
     fs = TagFS(os.getcwd(),
