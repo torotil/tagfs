@@ -9,9 +9,11 @@ from time import time
 
 class EventHandler(pyinotify.ProcessEvent):
 
-	def __init__(self, config):
+	def __init__(self, config, wm):
 		logging.debug("hello world from pyinotify")
+		self.mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE
 		self.config = config
+		self.wm = wm
 		self.tagfsroot = self.config.itemsDir
 		self.tfu = TagFileUtils(self.config)
 
@@ -28,14 +30,16 @@ class EventHandler(pyinotify.ProcessEvent):
 	# a new file was created
 	def process_IN_CREATE(self, event):
 		new_mtime = time()
-		
-		if event.name.startswith(".tag-db") or event.name.endswith(".swx") or event.name.endswith(".swp"):
-			# do nothing
-			return
+	
+		if event.name.startswith("."):
+			if not event.name.endswith("."):
+				# do nothing
+				return
 		elif os.path.isdir(event.pathname):
 			logging.debug("creating directory: " + event.pathname)
 			db = self.getDB()
 			db.addDirectory(self.mkpath(event.pathname))
+			self.wm.add_watch(event.pathname, self.mask, rec=True)
 			db.setModtime(new_mtime)
 			return
 		# we have a file that we really wanna tag
@@ -49,9 +53,10 @@ class EventHandler(pyinotify.ProcessEvent):
 	def process_IN_DELETE(self, event):
 		new_mtime = time()
 
-		if event.name.startswith(".tag-db") or event.name.endswith(".swx") or event.name.endswith(".swp"):
-			# do nothing
-			return
+		if event.name.startswith("."):
+			if not event.name.endswith("."):
+				# do nothing
+				return
 		elif os.path.isdir(event.pathname):
 			logging.debug("removing directory: " + event.pathname)
 			db = self.getDB()
