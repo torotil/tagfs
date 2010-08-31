@@ -50,7 +50,6 @@ class Path:
 	def __init__(self, config, path, tags, last):
 		self.config = config
 		tags[-1][-1] = tags[-1][-1][:1]
-		self.valid = True
 		self.path = path
 		self.tags = self.simplifyTags(tags)
 		self.rest = last[1:]
@@ -58,14 +57,11 @@ class Path:
 	def simplifyTags(self, tags):
 		for i in range(0, len(tags)):
 			s = tags[i]
-			tags[i] = [x[0] for x in s if len(x)] 
 			for x in s:
 				if len(x) > 1:
-					self.valid = False
+					raise FuseOSError(errno.ENOENT)
+			tags[i] = [x[0] for x in s if len(x)] 
 		return tags
-	
-	def isValid(self):
-		return self.valid
 		
 	def db(self):
 		return TagDB(self.config.dbLocation)
