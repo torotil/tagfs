@@ -243,15 +243,15 @@ class TagDB:
 
 		return ret 
 	
-	def listFilesForPath(self, path):
+	def listFilesForPath(self, tags):
 		stmt = ''
 		ret = []
 		cursor = self.connection.cursor()
 		
-		if path == '/':
+		if tags == [[]]:
 			stmt = 'SELECT path FROM ITEMS where type = \'F\''
 		else:
-			sqlpart = self.parser.get_source_file(path)
+			sqlpart = self.getSourceFileSQL(tags)
 			stmt  = ' SELECT a.path FROM '
 			stmt += ' items a, ( '
 			stmt += sqlpart
@@ -263,7 +263,7 @@ class TagDB:
 		
 		for row in cursor:
 			tmp=row[0]
-			ret.append(tmp.split('/')[len(tmp.split('/'))-1:][0])
+			ret.append(tmp.split('/')[-1:][0])
 		
 		return list(set(ret))
 	
@@ -295,21 +295,10 @@ class TagDB:
 		
 		return cursor.fetchone()[0] == 1
 	
-	def getDuplicatePaths(self, path):
+	def getDuplicatePaths(self, tags, filename):
 		ret = []
 		
-		filename = ''
-		tmpPath  = '' 
-		
-		if path.count('/') == 1:
-			filename = path[1:]
-			tmpPath = '/'
-
-		else:
-			filename = path.split('/')[len(path.split('/'))-1:][0]
-			tmpPath = path.rstrip(filename).rstrip('/')
-		
-		sqlpart = self.parser.get_source_file(tmpPath)
+		sqlpart = self.getSourceFileSQL(tags)
 		cursor = self.connection.cursor()
 		stmt = ' SELECT a.id, a.path FROM '
 		stmt += ' items a, ( '
@@ -361,33 +350,42 @@ class TagDB:
 		cursor.execute(q % id)
 		return cursor.fetchone()[0]
 	
-	def getAvailableTagsForPath(self,path):
+	@staticmethod
+	def getSourceFileSQL(tags):
+		if tags == [[]]:
+			return ' SELECT id as fid FROM items '
 		
-		if path == '/' or path.endswith('OR'):
+		q = ' SELECT fid, COUNT(*) FROM ( SELECT DISTINCT a.id as fid, b.tag FROM (SELECT a.id, b.pid FROM items a LEFT JOIN hierarchy b ON (a.id = b.cid)) a, tags b WHERE b.tag IN(%s) AND (b.fid = a.id OR b.fid = a.pid)) GROUP BY fid HAVING count(*)=%d '
+		query = ' UNION '.join([q % ("'"+"', '".join(x)+"'", len(x)) for x in tags])
+		return query
+	
+	def getAvailableTagsForPath(self, tags):
+		# we are only interested in the part after the last OR
+		tags = tags[-1:]
+		
+		# no condition - list all tags
+		if len(tags[0]) == 0:
 			return self.getTagsForTagCloud()
 		
-		#last part is and so we remove it
-		tmppath = path[0:len(path)-4]
-		
-		#now we strip away all ORs and use only the last part
-		tmppath = tmppath.split('/OR')[len(tmppath.split('/OR'))-1:][0]
+		#IN condition for all already selected tags
+		in_cond = "'"+"', '".join(tags[0])+"'"
 		
 		cursor = self.connection.cursor()
 		ret = []
 		
 		stmt =  ' SELECT distinct tag FROM ('
 		stmt += ' SELECT tag FROM tags a, ( '
-		stmt += self.parser.get_source_file(tmppath)
+		stmt += self.getSourceFileSQL(tags)
 		stmt += ' ) b \n'
 		stmt += ' WHERE a.fid = b.fid '
-		stmt += ' AND a.tag not in (' + tmppath.replace('AND', ',').replace('/', '\'') + '\' ) '
+		stmt += ' AND a.tag not in (' + in_cond + ' ) '
 		stmt += ' UNION '
 		stmt += ' SELECT tag FROM tags a, ( '
-		stmt += self.parser.get_source_file(tmppath)
+		stmt += self.getSourceFileSQL(tags)
 		stmt += ' ) b, hierarchy c '
 		stmt += ' WHERE c.pid = b.fid '
 		stmt += ' AND   (a.fid = c.cid OR a.fid = c.pid)'
-		stmt += ' AND a.tag not in (' + tmppath.replace('AND', ',').replace('/', '\'') + '\' ) '
+		stmt += ' AND a.tag not in (' + in_cond + ' ) '
 		stmt += ' ) '
 		
 		cursor.execute(stmt)

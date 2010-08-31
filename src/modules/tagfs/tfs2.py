@@ -19,6 +19,8 @@ from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 from tagdb import TagDB
 from stat import S_IFDIR, S_IFLNK, S_IFREG
 import offline_update
+from errno import ENOENT
+from path import PathFactory
 
 
 class Stat:
@@ -42,6 +44,7 @@ class Loopback(LoggingMixIn, Operations):
 				self.rwlock = Lock()
 				self.config = config
 				self.stat = Stat()
+				self.path = PathFactory(config)
 		
 		def getDB(self):
 			return TagDB(self.config.dbLocation)
@@ -108,21 +111,8 @@ class Loopback(LoggingMixIn, Operations):
 		#		return ['.', '..']
 		
 		def readdir(self, path, fh):
-			type = self.path_type(path)
-			
-			files = []
-			if type == 'tags': 
-				logging.debug('handling as tag-dir: '+path)
-				files += self.getDB().getAvailableTagsForPath(path)
-			if type == 'files':
-				logging.debug('handling as files-dir')
-				files += ['OR', 'AND']
-				files += self.getDB().listFilesForPath(path)
-			if type == 'duplicates':
-				files = [os.path.split(x)[1] for x in self.getDB().getDuplicatePaths(path)]
-			
-			logging.debug('answer from database: %s' % files)
-			return ['.', '..'] + files
+			p = self.path.create(path)
+			return p.readdir()
 		
 		def release(self, path, fh):
 				return os.close(fh)
