@@ -339,6 +339,9 @@ class TagDB:
 		cursor.execute(stmt, ('%'+filename,))
 		
 		ret = cursor.fetchone()
+		
+		if ret == None:
+			return None
 
 		return ret[0] 
 	

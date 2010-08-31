@@ -78,7 +78,12 @@ class Path:
 		return '%s: %s + %s' % (self.__class__.__name__, self.tags, self.rest)
 	
 	def readlink(self, filename):
-		return os.path.abspath(os.path.join(self.config.itemsDir, self.readlinkRel(filename)[1:]))
+		ret = os.path.abspath(os.path.join(self.config.itemsDir, self.readlinkRel(filename)[1:]))
+		
+		if ret == None:
+			raise FuseOSError(ENOENT)
+		
+		return ret
 	
 	def readlinkRel(self, filename):
 		return self.db().getSourceFile('/'.join([self.path, filename]))
