@@ -88,7 +88,7 @@ class Path:
 		return ret
 	
 	def readlinkRel(self, filename):
-		return self.db().getSourceFile(self.tags, filename)
+		return self.db().getSourceFile('/'.join([self.path, filename]))
 
 class TagPath(Path):
 	def readdir(self):
