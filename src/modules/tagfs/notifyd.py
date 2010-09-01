@@ -11,7 +11,7 @@ class EventHandler(pyinotify.ProcessEvent):
 
 	def __init__(self, config, wm):
 		logging.debug("hello world from pyinotify")
-		self.mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE
+		self.mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE | pyinotify.IN_MOVED_TO | pyinotify.IN_MOVED_FROM
 		self.config = config
 		self.wm = wm
 		self.tagfsroot = self.config.itemsDir
@@ -68,6 +68,28 @@ class EventHandler(pyinotify.ProcessEvent):
 			db = self.getDB()
 			db.removeFile(self.mkpath(event.pathname))
 			db.setModtime(new_mtime)
+			self.tfu.updateTagFileFromDB(event.path)
+
+	def process_IN_MOVED_TO(self, event):
+		new_mtime = time()
+		db = self.getDB()
+		fileTags = [tag for tag in db.getTagsForItem(self.mkpath(event.src_pathname)) if tag not in db.getTagsForItem(self.mkpath(os.path.dirname(event.src_pathname)))]
+
+		logging.debug("filetags for " + event.src_pathname + ": " + str(fileTags))
+	
+		logging.debug("removing file: " + event.src_pathname)
+		db.removeFile(self.mkpath(event.src_pathname))
+		
+		logging.debug("creating file: " + event.pathname)
+		db.addFile(self.mkpath(event.pathname))
+		
+		for tag in fileTags:
+			db.addTagToFile(tag, self.mkpath(event.pathname))
+	
+		db.setModtime(new_mtime)
+		
+		self.tfu.updateTagFileFromDB(os.path.dirname(event.src_pathname))
+		self.tfu.updateTagFileFromDB(os.path.dirname(event.pathname))
 
 	# a file was written, let's see if it was a .tag file and update the db
 	# WISHLIST: if existing meta tags (e.g. id3 tags) are imported as well,

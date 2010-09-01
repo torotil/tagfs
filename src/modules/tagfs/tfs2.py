@@ -176,7 +176,7 @@ if __name__ == "__main__":
 		ou.scan()
 		
 		wm = pyinotify.WatchManager()
-		mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE
+		mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE | pyinotify.IN_MOVED_TO | pyinotify.IN_MOVED_FROM
 		notifier = pyinotify.ThreadedNotifier(wm, notifyd.EventHandler(c, wm))
 		notifier.start()
 		wdd = wm.add_watch(c.itemsDir, mask, rec=True)
