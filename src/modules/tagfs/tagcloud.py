@@ -9,7 +9,7 @@ import os
 
 # connect to the database
 homedir = os.path.expanduser('~')
-db = TagDB(homedir + "/.tagfs/db.sqlite")
+db = TagDB("/tmp/tagfs/.tag-db.sqlite")
 
 class TagCloud:
 
