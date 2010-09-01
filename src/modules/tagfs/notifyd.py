@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+"Handles Events from pyinotify"
 import logging
 import os
 import pyinotify
@@ -8,8 +8,9 @@ from tagfileutils import TagFileUtils
 from time import time
 
 class EventHandler(pyinotify.ProcessEvent):
-
+	
 	def __init__(self, config, wm):
+		"""Initialise an EventHandler Object with the config and the WatchManager"""
 		logging.debug("hello world from pyinotify")
 		self.mask = pyinotify.IN_DELETE | pyinotify.IN_CREATE | pyinotify.IN_CLOSE_WRITE | pyinotify.IN_MOVED_TO | pyinotify.IN_MOVED_FROM
 		self.config = config
@@ -18,10 +19,12 @@ class EventHandler(pyinotify.ProcessEvent):
 		self.tfu = TagFileUtils(self.config)
 
 	def getDB(self):
+		"Get a reference to the Database"
 		db = TagDB(self.config.dbLocation)
 		return db
 
 	def mkpath(self, path):
+		"Convert a path from the real filesystem to one inside your items directory"
 		prefix_len = len(self.tagfsroot)
 		newpath = path[prefix_len:]
 		if newpath == "": newpath = "/" 
@@ -29,6 +32,7 @@ class EventHandler(pyinotify.ProcessEvent):
 
 	# a new file was created
 	def process_IN_CREATE(self, event):
+		"Adds new files and directories to the database, called from pyinotify"
 		new_mtime = time()
 	
 		if event.name.startswith("."):
@@ -51,6 +55,7 @@ class EventHandler(pyinotify.ProcessEvent):
 
 	# a file was removed, so let's remove it from the db as well
 	def process_IN_DELETE(self, event):
+		"Removes deleted files and directories from the database, called from pyinotify"
 		new_mtime = time()
 
 		if event.name.startswith("."):
@@ -71,6 +76,7 @@ class EventHandler(pyinotify.ProcessEvent):
 			self.tfu.updateTagFileFromDB(event.path)
 
 	def process_IN_MOVED_TO(self, event):
+		"Updates the database when files or directories are moved. Entries of the old directory are removed, the new location is added. Directory tags get lost, file tags get transferred. Called from pyinotify."
 		new_mtime = time()
 		db = self.getDB()
 		fileTags = [tag for tag in db.getTagsForItem(self.mkpath(event.src_pathname)) if tag not in db.getTagsForItem(self.mkpath(os.path.dirname(event.src_pathname)))]
@@ -96,6 +102,7 @@ class EventHandler(pyinotify.ProcessEvent):
 	# they could be handled here, e.g. if the file extension/mime type is
 	# mp3, the id3 tags could be extracted and if changed written to the db
 	def process_IN_CLOSE_WRITE(self, event):
+		"Handles modifications on .tag-files and updates the database accordingly. Called from pyinotify."
 		new_mtime = time()
 
 		if event.pathname.endswith("/.tag"):

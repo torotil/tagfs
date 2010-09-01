@@ -6,15 +6,18 @@ from tagdb import TagDB
 import logging
 
 class TagFileUtils:
-
+	"""Helper methods to keep database and .tag files in sync"""
 	def __init__(self, config):
+		"Initialise with a reference to the configuration."
 		self.config = config
 
 	def getDB(self):
+		"Get a reference to the database"
 		db = TagDB(self.config.dbLocation)
 		return db
 
 	def mkpath(self, path):
+		"Converts paths from real world paths to paths inside the items directory"
 		prefix_len = len(self.config.itemsDir)
 		newpath = path[prefix_len:]
 		if newpath == "": newpath = "/" 
@@ -24,6 +27,7 @@ class TagFileUtils:
 
 	# get directory and file tags from db and write to .tag file
 	def updateTagFileFromDB(self, path):
+		"This can be called after modifying the database, to keep the .tag files in sync"
 		self.db = self.getDB()
 		writepath = path
 		path = self.mkpath(path)
@@ -64,6 +68,7 @@ class TagFileUtils:
 
 	# parses a tagfile and updates the db
 	def updateDBFromTagFile(self, tagfile):
+		"This should be called after changes to a .tag-file to keep the database in sync"
 		self.db = self.getDB()
 		directoryTags = []
 		fileTags = {}
